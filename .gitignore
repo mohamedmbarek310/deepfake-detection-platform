@@ -1,0 +1,33 @@
+# Virtual Environment
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test images
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Temp and results folders
+temp/
+results/
+
+# VS Code settings
+.vscode/
+
+# Environment variables
+.env
+
+# Model cache
+*.bin
+*.safetensors
+
+# OS files
+.DS_Store
+Thumbs.db
