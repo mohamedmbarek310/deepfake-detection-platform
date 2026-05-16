@@ -261,6 +261,7 @@ def analyze_faces(faces: list, frame_indices: list) -> dict:
 
     # ── Step 3: Calculate risk score ──────────────────────────────────────────
     risk_score = calculate_risk_score(frame_results)
+    risk_score = int(risk_score)
     risk_info  = get_risk_level(risk_score)
 
     # ── Step 4: Calculate average confidence ──────────────────────────────────
@@ -290,7 +291,7 @@ def analyze_faces(faces: list, frame_indices: list) -> dict:
         'risk_score':        risk_score,
         'risk_level':        risk_info['level'],
         'risk_color':        risk_info['color'],
-        'confidence':        round(avg_confidence, 2),
+        'confidence':        float(round(avg_confidence, 2)),
         'fake_frames':       fake_count,
         'real_frames':       real_count,
         'total_frames':      total_count,
