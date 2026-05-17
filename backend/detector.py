@@ -39,13 +39,10 @@ def calculate_risk_score(frame_results: list) -> int:
     """
     Converts frame-level predictions into a single risk score (0-100).
 
-    Logic:
-      - Each frame has a fake probability (0.0 to 1.0)
-      - We average all fake probabilities
-      - Multiply by 100 to get a 0-100 score
-
-    Parameters:
-        frame_results (list): List of dicts with 'fake_prob' for each frame
+    Smart logic based on number of frames analyzed:
+      - 1 frame:       Use confidence directly with threshold
+      - 2-4 frames:    Use weighted average + fake percentage
+      - 5+ frames:     Use percentage of fake frames (most reliable)
 
     Returns:
         int: Risk score between 0 and 100
@@ -53,20 +50,49 @@ def calculate_risk_score(frame_results: list) -> int:
     if not frame_results:
         return 0
 
-    # Extract fake probability from each frame
-    fake_probs = [r['fake_prob'] for r in frame_results]
+    total_frames = len(frame_results)
+    fake_count   = sum(1 for r in frame_results if r['prediction'] == 'FAKE')
+    fake_probs   = [r['fake_prob'] for r in frame_results]
 
-    # Calculate weighted score
-    # Frames with higher fake probability have more influence
-    avg_fake_prob = np.mean(fake_probs)
-    max_fake_prob = np.max(fake_probs)
+    avg_fake_prob = float(np.mean(fake_probs))
+    max_fake_prob = float(np.max(fake_probs))
+    fake_percentage = fake_count / total_frames
 
-    # Combine average and max for a more sensitive score
-    # 70% weight on average, 30% weight on worst frame
-    risk = (avg_fake_prob * 0.7 + max_fake_prob * 0.3) * 100
+    # ── Scenario 1: Single frame (image) ──────────────────────────────────────
+    if total_frames == 1:
+        prob = fake_probs[0]
+        # Very high confidence required for single image
+        if prob >= 0.85:
+            # Confident fake
+            return int(round(prob * 100))
+        elif prob >= 0.5:
+            # Uncertain → suspicious (max 50)
+            return int(round(prob * 60))
+        else:
+            # Likely real
+            return int(round(prob * 30))
 
-    return int(round(risk))
+    # ── Scenario 2: Few frames (2-4) ──────────────────────────────────────────
+    if total_frames <= 4:
+        # Weighted: 50% percentage + 50% average confidence
+        risk = (fake_percentage * 0.5 + avg_fake_prob * 0.5) * 100
+        return int(round(risk))
 
+    # ── Scenario 3: Many frames (5+) ──────────────────────────────────────────
+    # Most reliable: use percentage of fake frames as primary signal
+    # But also consider how confident the model was
+
+    if fake_percentage >= 0.70:
+        # Strong majority fake → high risk
+        risk = 60 + (fake_percentage * 40)  # range: 60-100
+    elif fake_percentage >= 0.30:
+        # Mixed signal → suspicious
+        risk = 25 + (fake_percentage * 50)  # range: 25-75
+    else:
+        # Mostly real → low risk
+        risk = fake_percentage * 50         # range: 0-25
+
+    return int(round(min(risk, 100)))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPER: Get risk level label from score

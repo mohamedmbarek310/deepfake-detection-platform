@@ -13,11 +13,12 @@ What this file does:
 Author: Mohamed Mbarek - Deepfake Detection Platform PFE
 """
 
-import cv2                          # OpenCV: reads video files and frames
-from PIL import Image               # PIL: image manipulation (crop, resize)
-from facenet_pytorch import MTCNN   # MTCNN: face detection model
-import torch                        # PyTorch: needed to configure MTCNN device
-import numpy as np                  # NumPy: array operations on image data
+import cv2                              # OpenCV: reads video files and frames
+from PIL import Image                   # PIL: image manipulation (crop, resize)
+from facenet_pytorch import MTCNN       # MTCNN: face detection model
+import torch                            # PyTorch: needed to configure MTCNN device
+import numpy as np                      # NumPy: array operations on image data
+from normalizer import normalize_image  # Phase 6: Image normalization for better detection
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,8 +36,6 @@ print(f"[Preprocessor] Using device: {device}")
 # margin=20 → add 20px padding around the face (helps the model see context)
 mtcnn = MTCNN(
     keep_all=False,
-    image_size=224,
-    margin=20,
     device=device
 )
 
@@ -47,84 +46,124 @@ mtcnn = MTCNN(
 
 def extract_faces_from_video(video_path: str, frame_skip: int = 10):
     """
-    Extracts face images from a video file.
+    Extracts face images from a video file OR processes an image directly.
+
+    Smart logic:
+      - If file is an image (1 frame), pass full image to model
+      - If file is a video (many frames), crop faces from each frame
 
     Parameters:
-        video_path  (str): Full path to the video file (e.g. "C:/temp/video.mp4")
-        frame_skip  (int): Analyze every Nth frame. Default = 10.
-                           (So for a 30fps video, we analyze ~3 frames/second)
+        video_path  (str): Full path to the video or image file
+        frame_skip  (int): Analyze every Nth frame for videos
 
     Returns:
-        faces (list of PIL.Image): List of 224x224 face images
-        frame_indices (list of int): Which frame numbers the faces came from
+        faces (list of PIL.Image): List of images ready for the AI model
+        frame_indices (list of int): Frame numbers
     """
 
-    faces = []          # Will store the cropped face images
-    frame_indices = []  # Will store which frame number each face came from
+    faces = []
+    frame_indices = []
 
-    # ── Step 1: Open the video file ───────────────────────────────────────────
+    # ── Step 1: Check if it's an image (not a video) ─────────────────────────
+    file_ext = video_path.lower().split('.')[-1]
+    image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+
+    if file_ext in image_extensions:
+        # ── Handle as single image ───────────────────────────────────────────
+        print(f"[Preprocessor] Processing as single image: {video_path}")
+        try:
+            img = Image.open(video_path).convert('RGB')
+
+            # Step 1: Verify a face exists in the image
+            print(f"  🔍 Checking for face...")
+            boxes, _ = mtcnn.detect(img)
+
+            if boxes is None or len(boxes) == 0:
+                print(f"  ❌ No face detected in image")
+                return faces, frame_indices  # Return empty → backend will reject
+
+            print(f"  ✅ Face detected!")
+
+            # Step 2: Normalize the image
+            print(f"  🔧 Normalizing image...")
+            img = normalize_image(img)
+
+            # Step 3: Resize for the model (using full image, not just face)
+            img_resized = img.resize((224, 224), Image.LANCZOS)
+            faces.append(img_resized)
+            frame_indices.append(0)
+            print(f"  ✅ Image normalized and resized")
+            print(f"[Preprocessor] Done! Returning 1 image.")
+            return faces, frame_indices
+        except Exception as e:
+            print(f"[ERROR] Failed to load image: {e}")
+            return faces, frame_indices
+
+    # ── Step 2: Otherwise treat it as a video ────────────────────────────────
     cap = cv2.VideoCapture(video_path)
 
-    # Check if the video opened successfully
     if not cap.isOpened():
         print(f"[ERROR] Could not open video: {video_path}")
-        return faces, frame_indices   # Return empty lists
+        raise ValueError("Could not open video file. It may be corrupted or in an unsupported format.")
 
-    # Get basic video info for logging
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
+
+    # Check for empty/invalid videos
+    if total_frames <= 0:
+        cap.release()
+        raise ValueError("Video appears to be empty or corrupted.")
+
     print(f"[Preprocessor] Video loaded: {total_frames} total frames at {fps:.1f} FPS")
     print(f"[Preprocessor] Analyzing every {frame_skip}th frame...")
 
-    # ── Step 2: Loop through every frame in the video ─────────────────────────
-    frame_number = 0   # Counter to track which frame we are on
+    frame_number = 0
 
     while True:
-        # Read the next frame from the video
         success, frame = cap.read()
-
-        # If there are no more frames, stop the loop
         if not success:
             break
 
-        # ── Step 3: Only process every Nth frame (frame sampling) ─────────────
         if frame_number % frame_skip == 0:
-
-            # OpenCV reads frames in BGR color format, but PIL/MTCNN need RGB
-            # So we convert: BGR → RGB
+            # Convert BGR → RGB
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # Convert the NumPy array (OpenCV format) to a PIL Image
             pil_image = Image.fromarray(frame_rgb)
 
-            # ── Step 4: Detect face in this frame using MTCNN ─────────────────
             try:
-                # mtcnn() returns the cropped face as a tensor, or None if no face found
-                face_tensor = mtcnn(pil_image)
+                # Detect face bounding box
+                boxes, _ = mtcnn.detect(pil_image)
 
-                if face_tensor is not None:
-                    # Convert the tensor back to a PIL Image for storage
-                    # The tensor values are in range [-1, 1], we convert to [0, 255]
-                    face_np = face_tensor.permute(1, 2, 0).numpy()   # (C,H,W) → (H,W,C)
-                    face_np = ((face_np + 1) / 2 * 255).clip(0, 255).astype(np.uint8)
-                    face_pil = Image.fromarray(face_np)
+                if boxes is not None and len(boxes) > 0:
+                    # Get first detected face box
+                    box = boxes[0]
+                    x1, y1, x2, y2 = [int(coord) for coord in box]
+
+                    # Add margin around face
+                    margin = 20
+                    x1 = max(0, x1 - margin)
+                    y1 = max(0, y1 - margin)
+                    x2 = min(pil_image.width,  x2 + margin)
+                    y2 = min(pil_image.height, y2 + margin)
+
+                    # Crop and resize
+                    face_pil = pil_image.crop((x1, y1, x2, y2))
+                    face_pil = face_pil.resize((224, 224), Image.LANCZOS)
+
+                    # Apply normalization to the face crop
+                    face_pil = normalize_image(face_pil)
 
                     faces.append(face_pil)
                     frame_indices.append(frame_number)
-                    print(f"  ✅ Frame {frame_number}: Face detected and saved")
+                    print(f"  ✅ Frame {frame_number}: Face detected, normalized and saved")
                 else:
                     print(f"  ⚠️  Frame {frame_number}: No face found, skipping")
 
             except Exception as e:
-                # If something goes wrong on one frame, skip it and continue
-                print(f"  ❌ Frame {frame_number}: Error during face detection: {e}")
+                print(f"  ❌ Frame {frame_number}: Error: {e}")
 
-        frame_number += 1   # Move to the next frame
+        frame_number += 1
 
-    # ── Step 5: Release the video file from memory ────────────────────────────
     cap.release()
 
-    # ── Step 6: Report results ────────────────────────────────────────────────
     print(f"\n[Preprocessor] Done! Extracted {len(faces)} face(s) from {frame_number} total frames.")
-
     return faces, frame_indices

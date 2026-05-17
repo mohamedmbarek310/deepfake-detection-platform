@@ -33,7 +33,10 @@ from models import User, Scan
 from auth import router as auth_router, get_current_user
 from preprocessor import extract_faces_from_video
 from detector import analyze_faces
-
+from forensics import extract_metadata
+from report import generate_pdf_report
+from fastapi.responses import FileResponse
+import json
 # ─────────────────────────────────────────────────────────────────────────────
 # Create folders if they don't exist
 # ─────────────────────────────────────────────────────────────────────────────
@@ -118,43 +121,90 @@ async def analyze(
     """
 
     # ── Step 1: Validate file type ────────────────────────────────────────────
-    allowed_types = ["video/mp4", "video/avi", "video/mov",
-                     "image/jpeg", "image/png", "image/gif"]
+    ALLOWED_EXTENSIONS = {
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp',   # images
+        'mp4', 'avi', 'mov', 'mkv', 'webm',           # videos
+    }
 
-    if file.content_type not in allowed_types:
+    if not file.filename or '.' not in file.filename:
         raise HTTPException(
             status_code=400,
-            detail=f"File type not supported: {file.content_type}"
+            detail="Invalid file. Please upload a file with a proper extension."
+        )
+
+    extension = file.filename.split('.')[-1].lower()
+
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '.{extension}' is not supported. Please upload an image (jpg, png, gif, webp) or video (mp4, mov, avi)."
         )
 
     # ── Step 2: Save file to temp folder ──────────────────────────────────────
+    MAX_FILE_SIZE = 100 * 1024 * 1024   # 100 MB
+
     file_id   = str(uuid.uuid4())
-    extension = file.filename.split(".")[-1]
     temp_path = f"temp/{file_id}.{extension}"
 
+    # Read file content with size check
+    file_content = await file.read()
+    file_size    = len(file_content)
+
+    if file_size > MAX_FILE_SIZE:
+        size_mb = file_size / (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({size_mb:.1f} MB). Maximum size is 100 MB."
+        )
+
+    if file_size == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is empty."
+        )
+
+    # Save to disk
     with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(file_content)
 
-    print(f"[API] File saved: {temp_path}")
-
+    print(f"[API] File saved: {temp_path} ({file_size / 1024:.1f} KB)")
     try:
         # ── Step 3: Extract faces ─────────────────────────────────────────────
         print("[API] Extracting faces...")
-        faces, frame_indices = extract_faces_from_video(
-            temp_path,
-            frame_skip=10
-        )
+
+        try:
+            faces, frame_indices = extract_faces_from_video(temp_path)
+        except Exception as e:
+            print(f"[ERROR] Failed to process file: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="Could not read this file. It may be corrupted or in an unsupported format."
+            )
 
         if not faces:
             raise HTTPException(
-                status_code=422,
-                detail="No faces detected in the uploaded media."
+                status_code=400,
+                detail="No face detected in the uploaded file. Please upload a photo or video that contains at least one clearly visible face."
             )
 
         # ── Step 4: Run detection ─────────────────────────────────────────────
         print("[API] Running detection...")
-        result = analyze_faces(faces, frame_indices)
 
+        try:
+            result = analyze_faces(faces, frame_indices)
+        except Exception as e:
+            print(f"[ERROR] Detection failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Detection failed. The file may be corrupted. Please try a different file."
+            )
+        # ── Step 4b: Extract forensics metadata ───────────────────────────────
+        print("[API] Extracting forensics metadata...")
+        metadata = extract_metadata(temp_path)
+
+        # Use the original filename instead of the temp UUID name
+        if 'file_info' in metadata:
+            metadata['file_info']['filename'] = file.filename
         # ── Step 5: Save to database ──────────────────────────────────────────
         scan = Scan(
             user_id      = current_user.id,
@@ -168,6 +218,7 @@ async def analyze(
             real_frames  = result['real_frames'],
             total_frames = result['total_frames'],
             explanation  = result['explanation'],
+            metadata_json = json.dumps(metadata),
         )
         db.add(scan)
         db.commit()
@@ -189,7 +240,8 @@ async def analyze(
             "suspicious_frames": result['suspicious_frames'],
             "explanation":      result['explanation'],
             "filename":         file.filename,
-            "created_at":       scan.created_at.isoformat()
+            "created_at":       scan.created_at.isoformat(),
+            "metadata":         metadata,
         }
 
     finally:
@@ -253,6 +305,68 @@ def get_stats(
         "avg_risk":    round(avg_risk, 1),
         "username":    current_user.username
     }
+# ─────────────────────────────────────────────────────────────────────────────
+# Endpoint: Download PDF Report
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/v1/report/{scan_id}/pdf", tags=["History"])
+def download_pdf_report(
+    scan_id:      int,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_current_user)
+):
+    """Generates and downloads a PDF report for the scan."""
+
+    # Fetch scan from DB
+    scan = db.query(Scan).filter(
+        Scan.id      == scan_id,
+        Scan.user_id == current_user.id
+    ).first()
+
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Parse metadata
+    metadata = {}
+    if scan.metadata_json:
+        try:
+            metadata = json.loads(scan.metadata_json)
+        except Exception:
+            metadata = {}
+
+    # Build scan_data dict
+    scan_data = {
+        'scan_id':      scan.id,
+        'filename':     scan.filename,
+        'file_type':    scan.file_type,
+        'verdict':      scan.verdict,
+        'risk_score':   scan.risk_score,
+        'risk_level':   scan.risk_level,
+        'confidence':   scan.confidence,
+        'fake_frames':  scan.fake_frames,
+        'real_frames':  scan.real_frames,
+        'total_frames': scan.total_frames,
+        'explanation':  scan.explanation,
+        'metadata':     metadata,
+        'created_at':   scan.created_at.isoformat(),
+    }
+
+    # Create reports folder if it doesn't exist
+    reports_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
+    os.makedirs(reports_dir, exist_ok=True)
+
+    # Generate PDF
+    safe_filename = scan.filename.replace(' ', '_').replace('/', '_')
+    pdf_filename = f"DeepGuard_Report_{scan_id}_{safe_filename}.pdf"
+    pdf_path = os.path.join(reports_dir, pdf_filename)
+
+    generate_pdf_report(scan_data, pdf_path)
+
+    # Return as downloadable file
+    return FileResponse(
+        path=pdf_path,
+        media_type='application/pdf',
+        filename=pdf_filename,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -274,6 +388,14 @@ def get_report(
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
 
+    # Parse metadata JSON if it exists
+    metadata = {}
+    if scan.metadata_json:
+        try:
+            metadata = json.loads(scan.metadata_json)
+        except Exception:
+            metadata = {}
+
     return {
         "scan_id":     scan.id,
         "filename":    scan.filename,
@@ -285,5 +407,6 @@ def get_report(
         "real_frames": scan.real_frames,
         "total_frames": scan.total_frames,
         "explanation": scan.explanation,
+        "metadata":    metadata,
         "created_at":  scan.created_at.isoformat()
     }
