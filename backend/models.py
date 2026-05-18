@@ -55,7 +55,7 @@ class Scan(Base):
     explanation      = Column(Text, nullable=True)
     heatmap_path     = Column(String(255), nullable=True)
     metadata_json    = Column(Text, nullable=True)
+    share_token      = Column(String(64), unique=True, nullable=True, index=True)
     created_at       = Column(DateTime, default=datetime.utcnow)
-
     # Relationship: each scan belongs to one user
     user = relationship("User", back_populates="scans")

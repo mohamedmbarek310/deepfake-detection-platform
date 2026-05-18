@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 import shutil
 import uuid
 import os
+import secrets
 import sys
 import json
 from datetime import datetime
@@ -409,4 +410,73 @@ def get_report(
         "explanation": scan.explanation,
         "metadata":    metadata,
         "created_at":  scan.created_at.isoformat()
+    }
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTE: Generate share link for a scan
+# POST /api/v1/scans/{scan_id}/share
+# ─────────────────────────────────────────────────────────────────────────────
+@app.post("/api/v1/scans/{scan_id}/share", tags=["Share"])
+def create_share_link(
+    scan_id:      int,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_current_user)
+):
+    """Generates a unique shareable token for a scan."""
+
+    # Find the scan (only if owned by current user)
+    scan = db.query(Scan).filter(
+        Scan.id      == scan_id,
+        Scan.user_id == current_user.id
+    ).first()
+
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Generate unique token if doesn't exist
+    if not scan.share_token:
+        scan.share_token = secrets.token_urlsafe(16)
+        db.commit()
+        db.refresh(scan)
+
+    return {
+        "share_token": scan.share_token,
+        "share_url":   f"http://localhost:5173/share/{scan.share_token}"
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTE: Public scan view via share token
+# GET /api/v1/share/{token}
+# NO AUTHENTICATION REQUIRED — public endpoint
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/v1/share/{token}", tags=["Share"])
+def view_shared_scan(token: str, db: Session = Depends(get_db)):
+    """Returns scan data using share token (public access)."""
+
+    scan = db.query(Scan).filter(Scan.share_token == token).first()
+
+    if not scan:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+
+    # Parse metadata
+    metadata = {}
+    if scan.metadata_json:
+        try:
+            metadata = json.loads(scan.metadata_json)
+        except Exception:
+            metadata = {}
+
+    return {
+        "scan_id":     scan.id,
+        "filename":    scan.filename,
+        "verdict":     scan.verdict,
+        "risk_score":  scan.risk_score,
+        "risk_level":  scan.risk_level,
+        "confidence":  scan.confidence,
+        "fake_frames": scan.fake_frames,
+        "real_frames": scan.real_frames,
+        "total_frames": scan.total_frames,
+        "explanation": scan.explanation,
+        "metadata":    metadata,
+        "created_at":  scan.created_at.isoformat(),
     }
