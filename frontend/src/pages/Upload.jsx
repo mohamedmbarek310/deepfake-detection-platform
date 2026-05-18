@@ -33,12 +33,30 @@ function Upload() {
     setPreview(url)
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const MAX_FILE_SIZE = 100 * 1024 * 1024   // 100 MB
+
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     multiple: false,
+    maxSize: MAX_FILE_SIZE,
     accept: {
-      'video/*': ['.mp4', '.avi', '.mov'],
-      'image/*': ['.jpg', '.jpeg', '.png', '.gif'],
+      'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.webm'],
+      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'],
+    },
+    onDropRejected: (rejectedFiles) => {
+      const error = rejectedFiles[0]?.errors?.[0]
+      let message = 'File not accepted'
+
+      if (error?.code === 'file-too-large') {
+        const fileSize = (rejectedFiles[0].file.size / (1024 * 1024)).toFixed(1)
+        message = `File too large (${fileSize} MB). Maximum size is 100 MB.`
+      } else if (error?.code === 'file-invalid-type') {
+        message = 'Invalid file type. Please upload an image or video.'
+      } else if (error?.message) {
+        message = error.message
+      }
+
+      setError(message)
     },
   })
 
@@ -84,7 +102,25 @@ function Upload() {
       // Redirect to results page
       navigate(`/results/${result.scan_id}`)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Analysis failed. Try a different file.')
+      // Get error message from backend, or use default
+      const backendError = err.response?.data?.detail
+      const statusCode   = err.response?.status
+
+      let errorMessage = 'Analysis failed. Try a different file.'
+
+      if (backendError) {
+        errorMessage = backendError
+      } else if (statusCode === 401) {
+        errorMessage = 'Session expired. Please log in again.'
+      } else if (statusCode === 413) {
+        errorMessage = 'File too large. Maximum size is 100MB.'
+      } else if (statusCode === 500) {
+        errorMessage = 'Server error. Please try again or contact support.'
+      } else if (!err.response) {
+        errorMessage = 'Cannot connect to server. Make sure the backend is running.'
+      }
+
+      setError(errorMessage)
       setLoading(false)
     }
   }

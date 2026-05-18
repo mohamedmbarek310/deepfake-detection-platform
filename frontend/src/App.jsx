@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import Results from './pages/Results'
 import History from './pages/History'
+import Share from './pages/Share'
 
 // Check if user is logged in
 const PrivateRoute = ({ children }) => {
@@ -35,6 +36,8 @@ function App() {
         <Route path="/history" element={
           <PrivateRoute><History /></PrivateRoute>
         } />
+        {/* Public share route - no auth required */}
+        <Route path="/share/:token" element={<Share />} />
       </Routes>
     </BrowserRouter>
   )
