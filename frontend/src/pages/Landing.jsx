@@ -4,10 +4,12 @@ import {
   ArrowRight, CheckCircle2, Sparkles, Lock, Activity,
   Upload, Cpu, Search
 } from 'lucide-react'
+import ThemeToggle from '../components/ThemeToggle'
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden
+                    dark:bg-black dark:text-white">
 
       {/* ═══════════════════════════════════════════════════════════════
           ANIMATED BACKGROUND GRID
@@ -35,7 +37,7 @@ function Landing() {
       {/* ═══════════════════════════════════════════════════════════════
           NAVBAR
       ═══════════════════════════════════════════════════════════════ */}
-      <nav className="relative z-10 flex justify-between items-center
+      <nav className="relative z-50 flex justify-between items-center
                       px-8 py-6 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Shield className="w-8 h-8 text-blue-500" />
@@ -44,14 +46,16 @@ function Landing() {
             DeepGuard AI
           </span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link to="/login"
-                className="px-6 py-2 text-gray-300 hover:text-white transition">
+                className="px-6 py-2 text-gray-600 hover:text-gray-900 transition
+                           dark:text-gray-300 dark:hover:text-white">
             Sign In
           </Link>
           <Link to="/register"
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600
-                           rounded-lg hover:shadow-lg hover:shadow-blue-500/50
+                           text-white rounded-lg hover:shadow-lg hover:shadow-blue-500/50
                            transition-all">
             Get Started
           </Link>
@@ -66,26 +70,27 @@ function Landing() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 mb-8
                         bg-blue-500/10 border border-blue-500/30 rounded-full">
-          <Sparkles className="w-4 h-4 text-blue-400" />
-          <span className="text-sm text-blue-300">
+          <Sparkles className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+          <span className="text-sm text-blue-600 dark:text-blue-300">
             AI-Powered Deepfake Detection Platform
           </span>
         </div>
 
         {/* Main Title */}
         <h1 className="text-7xl md:text-8xl font-black mb-6 leading-tight">
-          <span className="block bg-gradient-to-r from-white via-blue-200 to-white
-                           bg-clip-text text-transparent">
+          <span className="block bg-gradient-to-r from-gray-900 via-blue-600 to-gray-900
+                           bg-clip-text text-transparent
+                           dark:from-white dark:via-blue-200 dark:to-white">
             Detect. Analyze.
           </span>
-          <span className="block bg-gradient-to-r from-blue-400 via-purple-500
+          <span className="block bg-gradient-to-r from-blue-500 via-purple-500
                            to-red-500 bg-clip-text text-transparent">
             Protect.
           </span>
         </h1>
 
         {/* Tagline */}
-        <p className="text-xl text-gray-400 max-w-3xl mx-auto mb-12">
+        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12 dark:text-gray-400">
           Advanced AI technology to detect deepfakes, analyze digital forensics,
           and generate professional reports — protecting truth in the age of
           synthetic media.
@@ -95,22 +100,24 @@ function Landing() {
         <div className="flex flex-col md:flex-row gap-4 justify-center">
           <Link to="/register"
                 className="group px-8 py-4 bg-gradient-to-r from-blue-600
-                           to-purple-600 rounded-xl text-lg font-semibold
+                           to-purple-600 text-white rounded-xl text-lg font-semibold
                            hover:shadow-2xl hover:shadow-blue-500/50
                            transition-all flex items-center justify-center gap-2">
             Start Free Analysis
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition" />
           </Link>
           <Link to="/login"
-                className="px-8 py-4 border border-gray-700 rounded-xl
+                className="px-8 py-4 border border-gray-300 rounded-xl
                            text-lg font-semibold hover:border-blue-500
-                           hover:bg-blue-500/10 transition-all">
+                           hover:bg-blue-500/10 transition-all
+                           dark:border-gray-700">
             Sign In
           </Link>
         </div>
 
         {/* Trust indicators */}
-        <div className="flex flex-wrap justify-center gap-8 mt-16 text-gray-400">
+        <div className="flex flex-wrap justify-center gap-8 mt-16 text-gray-600
+                        dark:text-gray-400">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-green-500" />
             <span>99.2% Accuracy</span>
@@ -139,15 +146,17 @@ function Landing() {
             { num: '100%',  label: 'Forensics Coverage', icon: Lock },
           ].map((stat, i) => (
             <div key={i}
-                 className="p-6 bg-white/5 backdrop-blur-sm border border-white/10
+                 className="p-6 bg-gray-50 border border-gray-200 backdrop-blur-sm
                             rounded-2xl hover:border-blue-500/50 transition-all
-                            hover:scale-105">
-              <stat.icon className="w-8 h-8 text-blue-400 mb-3" />
-              <div className="text-4xl font-bold bg-gradient-to-r from-white
-                              to-blue-300 bg-clip-text text-transparent">
+                            hover:scale-105
+                            dark:bg-white/5 dark:border-white/10">
+              <stat.icon className="w-8 h-8 text-blue-500 mb-3 dark:text-blue-400" />
+              <div className="text-4xl font-bold bg-gradient-to-r from-gray-900
+                              to-blue-600 bg-clip-text text-transparent
+                              dark:from-white dark:to-blue-300">
                 {stat.num}
               </div>
-              <div className="text-gray-400 text-sm mt-1">{stat.label}</div>
+              <div className="text-gray-600 text-sm mt-1 dark:text-gray-400">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -167,7 +176,7 @@ function Landing() {
                 Features
               </span>
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-gray-600 text-lg dark:text-gray-400">
               Everything you need to detect and analyze deepfakes
             </p>
           </div>
@@ -212,16 +221,17 @@ function Landing() {
               },
             ].map((feature, i) => (
               <div key={i}
-                   className="group p-8 bg-white/5 backdrop-blur-sm
-                              border border-white/10 rounded-2xl
+                   className="group p-8 bg-gray-50 border border-gray-200
+                              backdrop-blur-sm rounded-2xl
                               hover:border-blue-500/50 transition-all
-                              hover:scale-105 cursor-pointer">
+                              hover:scale-105 cursor-pointer
+                              dark:bg-white/5 dark:border-white/10">
                 <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br
                                 ${feature.gradient} mb-4`}>
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-gray-400">{feature.desc}</p>
+                <p className="text-gray-600 dark:text-gray-400">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -242,7 +252,7 @@ function Landing() {
                 Works
               </span>
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-gray-600 text-lg dark:text-gray-400">
               4 simple steps to detect deepfakes
             </p>
           </div>
@@ -255,17 +265,20 @@ function Landing() {
               { icon: FileText, title: 'Report', desc: 'Download forensics PDF' },
             ].map((step, i) => (
               <div key={i} className="relative">
-                <div className="p-6 bg-white/5 backdrop-blur-sm
-                                border border-white/10 rounded-2xl text-center
-                                hover:border-purple-500/50 transition-all">
+                <div className="p-6 bg-gray-50 border border-gray-200 backdrop-blur-sm
+                                rounded-2xl text-center
+                                hover:border-purple-500/50 transition-all
+                                dark:bg-white/5 dark:border-white/10">
                   <div className="inline-flex w-16 h-16 items-center justify-center
                                   rounded-full bg-gradient-to-br from-purple-500
                                   to-pink-500 mb-4">
                     <step.icon className="w-7 h-7 text-white" />
                   </div>
-                  <div className="text-sm text-purple-400 mb-2">Step {i + 1}</div>
+                  <div className="text-sm text-purple-500 mb-2 dark:text-purple-400">
+                    Step {i + 1}
+                  </div>
                   <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                  <p className="text-gray-400 text-sm">{step.desc}</p>
+                  <p className="text-gray-600 text-sm dark:text-gray-400">{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -278,8 +291,9 @@ function Landing() {
       ═══════════════════════════════════════════════════════════════ */}
       <section className="relative z-10 px-8 py-20">
         <div className="max-w-4xl mx-auto p-12 bg-gradient-to-br from-blue-600/20
-                        to-purple-600/20 backdrop-blur-sm border border-white/10
-                        rounded-3xl text-center">
+                        to-purple-600/20 backdrop-blur-sm border border-gray-200
+                        rounded-3xl text-center
+                        dark:border-white/10">
           <h2 className="text-5xl font-bold mb-4">
             Ready to{' '}
             <span className="bg-gradient-to-r from-blue-400 to-purple-500
@@ -287,13 +301,13 @@ function Landing() {
               Detect Truth?
             </span>
           </h2>
-          <p className="text-gray-400 text-lg mb-8">
+          <p className="text-gray-600 text-lg mb-8 dark:text-gray-400">
             Join the platform that fights deepfakes with AI
           </p>
           <Link to="/register"
                 className="inline-flex items-center gap-2 px-10 py-5
                            bg-gradient-to-r from-blue-600 to-purple-600
-                           rounded-xl text-lg font-semibold
+                           text-white rounded-xl text-lg font-semibold
                            hover:shadow-2xl hover:shadow-blue-500/50
                            transition-all group">
             Start Free Analysis
@@ -305,11 +319,12 @@ function Landing() {
       {/* ═══════════════════════════════════════════════════════════════
           FOOTER
       ═══════════════════════════════════════════════════════════════ */}
-      <footer className="relative z-10 px-8 py-12 border-t border-white/10
-                         text-center text-gray-500">
+      <footer className="relative z-10 px-8 py-12 border-t border-gray-200
+                         text-center text-gray-500
+                         dark:border-white/10">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Shield className="w-5 h-5 text-blue-500" />
-          <span className="font-bold text-white">DeepGuard AI</span>
+          <span className="font-bold text-gray-900 dark:text-white">DeepGuard AI</span>
         </div>
         <p className="text-sm">
           AI-Powered Deepfake Detection &amp; Digital Forensics Platform

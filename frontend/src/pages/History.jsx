@@ -6,6 +6,7 @@ import {
   Filter, Clock, AlertOctagon, Search
 } from 'lucide-react'
 import { getHistory, logout } from '../services/api'
+import ThemeToggle from '../components/ThemeToggle'
 
 function History() {
   const navigate   = useNavigate()
@@ -59,7 +60,8 @@ function History() {
   // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center
+                      dark:bg-black dark:text-white">
         <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
       </div>
     )
@@ -71,13 +73,15 @@ function History() {
   const realCount  = scans.filter(s => s.verdict === 'REAL').length
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-gray-900
+                    dark:bg-black dark:text-white">
 
       {/* ═══════════════════════════════════════════════════════════════
           NAVBAR
       ═══════════════════════════════════════════════════════════════ */}
-      <nav className="border-b border-white/10 backdrop-blur-sm sticky top-0 z-50
-                      bg-black/80">
+      <nav className="border-b border-gray-200 backdrop-blur-sm sticky top-0 z-50
+                      bg-white/80
+                      dark:border-white/10 dark:bg-black/80">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
           <Link to="/dashboard" className="flex items-center gap-2">
@@ -90,28 +94,34 @@ function History() {
 
           <div className="flex items-center gap-6">
             <Link to="/upload"
-                  className="text-gray-300 hover:text-white transition">
+                  className="text-gray-600 hover:text-gray-900 transition
+                             dark:text-gray-300 dark:hover:text-white">
               Upload
             </Link>
             <Link to="/history"
-                  className="text-blue-400 font-semibold">
+                  className="text-blue-500 font-semibold dark:text-blue-400">
               History
             </Link>
-            <div className="flex items-center gap-3 pl-6 border-l border-white/10">
+            <ThemeToggle />
+            <div className="flex items-center gap-3 pl-6 border-l border-gray-200
+                            dark:border-white/10">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500
-                              to-purple-600 flex items-center justify-center font-bold">
+                              to-purple-600 flex items-center justify-center
+                              text-white font-bold">
                 {username?.[0]?.toUpperCase()}
               </div>
-              <span className="text-sm text-gray-300">{username}</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">{username}</span>
               <button onClick={handleLogout}
                       title="Log out"
-                      className="group relative p-2 text-gray-400
-                                 hover:text-red-400 transition">
+                      className="group relative p-2 text-gray-500 hover:text-red-500
+                                 transition
+                                 dark:text-gray-400 dark:hover:text-red-400">
                 <LogOut className="w-5 h-5" />
                 <span className="absolute right-0 top-full mt-2 px-3 py-1
-                                 bg-black border border-white/10 rounded-lg text-xs
+                                 bg-white border border-gray-200 rounded-lg text-xs
                                  whitespace-nowrap opacity-0 group-hover:opacity-100
-                                 transition pointer-events-none shadow-lg">
+                                 transition pointer-events-none shadow-lg text-gray-700
+                                 dark:bg-black dark:border-white/10 dark:text-gray-300">
                   Log out
                 </span>
               </button>
@@ -127,8 +137,9 @@ function History() {
 
         {/* Back link */}
         <Link to="/dashboard"
-              className="inline-flex items-center gap-2 text-gray-400
-                         hover:text-white mb-6 transition">
+              className="inline-flex items-center gap-2 text-gray-500
+                         hover:text-gray-900 mb-6 transition
+                         dark:text-gray-400 dark:hover:text-white">
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
@@ -142,38 +153,40 @@ function History() {
               History
             </span>
           </h1>
-          <p className="text-gray-400">
+          <p className="text-gray-600 dark:text-gray-400">
             View and manage all your past detections
           </p>
         </div>
 
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <SummaryCard label="Total" value={totalCount} color="text-blue-400" />
-          <SummaryCard label="Fake"  value={fakeCount}  color="text-red-400" />
-          <SummaryCard label="Real"  value={realCount}  color="text-green-400" />
+          <SummaryCard label="Total" value={totalCount} color="text-blue-600 dark:text-blue-400" />
+          <SummaryCard label="Fake"  value={fakeCount}  color="text-red-600 dark:text-red-400" />
+          <SummaryCard label="Real"  value={realCount}  color="text-green-600 dark:text-green-400" />
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
             FILTERS BAR
         ─────────────────────────────────────────────────────────────── */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                        rounded-2xl p-4 mb-6">
+        <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                        rounded-2xl p-4 mb-6
+                        dark:bg-white/5 dark:border-white/10">
 
           <div className="flex flex-col md:flex-row gap-4">
 
             {/* Search bar */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2
-                                 w-5 h-5 text-gray-500" />
+                                 w-5 h-5 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by filename..."
-                className="w-full pl-11 pr-4 py-2.5 bg-black/40 border border-white/10
+                className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200
                            rounded-lg focus:outline-none focus:border-blue-500
-                           transition"
+                           transition text-gray-900
+                           dark:bg-black/40 dark:border-white/10 dark:text-white"
               />
             </div>
 
@@ -185,15 +198,15 @@ function History() {
               <FilterButton active={filter === 'FAKE'}
                             onClick={() => setFilter('FAKE')}
                             label="Fake"
-                            color="text-red-400 border-red-500/30 bg-red-500/10" />
+                            color="text-red-600 border-red-500/30 bg-red-500/10 dark:text-red-400" />
               <FilterButton active={filter === 'REAL'}
                             onClick={() => setFilter('REAL')}
                             label="Real"
-                            color="text-green-400 border-green-500/30 bg-green-500/10" />
+                            color="text-green-600 border-green-500/30 bg-green-500/10 dark:text-green-400" />
               <FilterButton active={filter === 'SUSPICIOUS'}
                             onClick={() => setFilter('SUSPICIOUS')}
                             label="Suspicious"
-                            color="text-yellow-400 border-yellow-500/30 bg-yellow-500/10" />
+                            color="text-yellow-600 border-yellow-500/30 bg-yellow-500/10 dark:text-yellow-400" />
             </div>
           </div>
         </div>
@@ -202,12 +215,14 @@ function History() {
             SCANS LIST
         ─────────────────────────────────────────────────────────────── */}
         {filteredScans.length > 0 ? (
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                          rounded-2xl overflow-hidden">
+          <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                          rounded-2xl overflow-hidden
+                          dark:bg-white/5 dark:border-white/10">
 
             {/* Table header */}
             <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b
-                            border-white/10 text-sm text-gray-400 font-semibold">
+                            border-gray-200 text-sm text-gray-500 font-semibold
+                            dark:border-white/10 dark:text-gray-400">
               <div className="col-span-5">File</div>
               <div className="col-span-2">Date</div>
               <div className="col-span-2">Verdict</div>
@@ -216,7 +231,7 @@ function History() {
             </div>
 
             {/* Scan rows */}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-gray-200 dark:divide-white/5">
               {filteredScans.map((scan) => (
                 <ScanRow key={scan.scan_id} scan={scan} />
               ))}
@@ -225,11 +240,13 @@ function History() {
         ) : (
 
           /* Empty state */
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                          rounded-2xl p-16 text-center">
-            <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+          <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                          rounded-2xl p-16 text-center
+                          dark:bg-white/5 dark:border-white/10">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4
+                                 dark:text-gray-700" />
             <h3 className="text-xl font-semibold mb-2">No scans found</h3>
-            <p className="text-gray-400 mb-6">
+            <p className="text-gray-600 mb-6 dark:text-gray-400">
               {scans.length === 0
                 ? 'You have no scans yet. Upload your first file!'
                 : 'No scans match your filters.'}
@@ -238,7 +255,7 @@ function History() {
               <Link to="/upload"
                     className="inline-flex items-center gap-2 px-6 py-3
                                bg-gradient-to-r from-blue-600 to-purple-600
-                               rounded-lg font-semibold hover:shadow-xl
+                               text-white rounded-lg font-semibold hover:shadow-xl
                                hover:shadow-blue-500/50 transition-all">
                 <Upload className="w-5 h-5" />
                 Upload First File
@@ -257,10 +274,11 @@ function History() {
 // ─────────────────────────────────────────────────────────────────────────────
 function SummaryCard({ label, value, color }) {
   return (
-    <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                    rounded-xl p-4">
+    <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                    rounded-xl p-4
+                    dark:bg-white/5 dark:border-white/10">
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-sm text-gray-400">{label}</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
     </div>
   )
 }
@@ -274,8 +292,8 @@ function FilterButton({ active, onClick, label, color }) {
       onClick={onClick}
       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all border
                  ${active
-                   ? color || 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                   : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                   ? color || 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-white/5 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/10'}`}
     >
       {label}
     </button>
@@ -291,15 +309,15 @@ function ScanRow({ scan }) {
   const verdictConfig = {
     REAL: {
       icon: CheckCircle2,
-      color: 'text-green-400 bg-green-500/10 border-green-500/30',
+      color: 'text-green-600 bg-green-500/10 border-green-500/30 dark:text-green-400',
     },
     FAKE: {
       icon: AlertOctagon,
-      color: 'text-red-400 bg-red-500/10 border-red-500/30',
+      color: 'text-red-600 bg-red-500/10 border-red-500/30 dark:text-red-400',
     },
     SUSPICIOUS: {
       icon: AlertCircle,
-      color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+      color: 'text-yellow-600 bg-yellow-500/10 border-yellow-500/30 dark:text-yellow-400',
     },
   }
 
@@ -309,14 +327,15 @@ function ScanRow({ scan }) {
   return (
     <div onClick={() => navigate(`/results/${scan.scan_id}`)}
          className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4
-                    hover:bg-white/5 transition cursor-pointer items-center">
+                    hover:bg-gray-100 transition cursor-pointer items-center
+                    dark:hover:bg-white/5">
 
       {/* File */}
       <div className="col-span-5 flex items-center gap-3 min-w-0">
-        <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        <FileText className="w-5 h-5 text-gray-500 flex-shrink-0 dark:text-gray-400" />
         <div className="min-w-0">
           <div className="font-semibold truncate">{scan.filename}</div>
-          <div className="text-xs text-gray-500 md:hidden">
+          <div className="text-xs text-gray-500 md:hidden dark:text-gray-400">
             {new Date(scan.created_at).toLocaleDateString()}
           </div>
         </div>
@@ -324,7 +343,7 @@ function ScanRow({ scan }) {
 
       {/* Date */}
       <div className="col-span-2 hidden md:flex items-center gap-2
-                      text-sm text-gray-400">
+                      text-sm text-gray-600 dark:text-gray-400">
         <Calendar className="w-4 h-4" />
         {new Date(scan.created_at).toLocaleDateString()}
       </div>
@@ -341,7 +360,8 @@ function ScanRow({ scan }) {
       {/* Risk Score */}
       <div className="col-span-2">
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-2 bg-black/40 rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden
+                          dark:bg-black/40">
             <div className={`h-full rounded-full transition-all
                             ${scan.risk_score <= 20 ? 'bg-green-500' :
                               scan.risk_score <= 50 ? 'bg-yellow-500' :

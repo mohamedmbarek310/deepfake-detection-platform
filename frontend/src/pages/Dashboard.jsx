@@ -10,14 +10,21 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import { getStats, getHistory, logout } from '../services/api'
+import ThemeToggle from '../components/ThemeToggle'
+import { useTheme } from '../context/ThemeContext'
 
 function Dashboard() {
   const navigate = useNavigate()
   const username = localStorage.getItem('username')
+  const { theme } = useTheme()
 
   const [stats, setStats]     = useState(null)
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Detect if currently in dark mode (for chart styling)
+  const isDark = theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
   // ─────────────────────────────────────────────────────────────────────────
   // Fetch dashboard data on page load
@@ -53,7 +60,8 @@ function Dashboard() {
   // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center
+                      dark:bg-black dark:text-white">
         <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
       </div>
     )
@@ -73,14 +81,22 @@ function Dashboard() {
 
   const recentScans = history.slice(0, 5)
 
+  // Chart styling based on theme
+  const gridStroke   = isDark ? '#333'    : '#e5e7eb'
+  const axisStroke   = isDark ? '#666'    : '#9ca3af'
+  const tooltipBg    = isDark ? '#0f0f0f' : '#ffffff'
+  const tooltipBorder = isDark ? '#333'   : '#e5e7eb'
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-gray-900
+                    dark:bg-black dark:text-white">
 
       {/* ═══════════════════════════════════════════════════════════════
           NAVBAR
       ═══════════════════════════════════════════════════════════════ */}
-      <nav className="border-b border-white/10 backdrop-blur-sm sticky top-0 z-50
-                      bg-black/80">
+      <nav className="border-b border-gray-200 backdrop-blur-sm sticky top-0 z-50
+                      bg-white/80
+                      dark:border-white/10 dark:bg-black/80">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
           <Link to="/dashboard" className="flex items-center gap-2">
@@ -93,28 +109,35 @@ function Dashboard() {
 
           <div className="flex items-center gap-6">
             <Link to="/upload"
-                  className="text-gray-300 hover:text-white transition">
+                  className="text-gray-600 hover:text-gray-900 transition
+                             dark:text-gray-300 dark:hover:text-white">
               Upload
             </Link>
             <Link to="/history"
-                  className="text-gray-300 hover:text-white transition">
+                  className="text-gray-600 hover:text-gray-900 transition
+                             dark:text-gray-300 dark:hover:text-white">
               History
             </Link>
-            <div className="flex items-center gap-3 pl-6 border-l border-white/10">
+            <ThemeToggle />
+            <div className="flex items-center gap-3 pl-6 border-l border-gray-200
+                            dark:border-white/10">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500
                               to-purple-600 flex items-center justify-center
-                              font-bold">
+                              text-white font-bold">
                 {username?.[0]?.toUpperCase()}
               </div>
-              <span className="text-sm text-gray-300">{username}</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">{username}</span>
               <button onClick={handleLogout}
                       title="Log out"
-                      className="group relative p-2 text-gray-400 hover:text-red-400 transition">
+                      className="group relative p-2 text-gray-500 hover:text-red-500
+                                 transition
+                                 dark:text-gray-400 dark:hover:text-red-400">
                 <LogOut className="w-5 h-5" />
-                <span className="absolute right-0 top-full mt-2 px-3 py-1 bg-black border
-                                 border-white/10 rounded-lg text-xs whitespace-nowrap
-                                 opacity-0 group-hover:opacity-100 transition pointer-events-none
-                                 shadow-lg">
+                <span className="absolute right-0 top-full mt-2 px-3 py-1
+                                 bg-white border border-gray-200 rounded-lg text-xs
+                                 whitespace-nowrap opacity-0 group-hover:opacity-100
+                                 transition pointer-events-none shadow-lg text-gray-700
+                                 dark:bg-black dark:border-white/10 dark:text-gray-300">
                  Log out
                 </span>
               </button>
@@ -139,15 +162,15 @@ function Dashboard() {
                 {username}
               </span>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-600 dark:text-gray-400">
               Here is your detection activity overview
             </p>
           </div>
           <Link to="/upload"
                 className="inline-flex items-center gap-2 px-6 py-3
-                           bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl
-                           font-semibold hover:shadow-2xl hover:shadow-blue-500/50
-                           transition-all">
+                           bg-gradient-to-r from-blue-600 to-purple-600 text-white
+                           rounded-xl font-semibold hover:shadow-2xl
+                           hover:shadow-blue-500/50 transition-all">
             <Upload className="w-5 h-5" />
             New Analysis
           </Link>
@@ -190,10 +213,11 @@ function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 
           {/* Pie chart */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                          rounded-2xl p-6">
+          <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                          rounded-2xl p-6
+                          dark:bg-white/5 dark:border-white/10">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
+              <BarChart3 className="w-5 h-5 text-blue-500 dark:text-blue-400" />
               Detection Distribution
             </h3>
 
@@ -215,8 +239,8 @@ function Dashboard() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      background: '#0f0f0f',
-                      border: '1px solid #333',
+                      background: tooltipBg,
+                      border: `1px solid ${tooltipBorder}`,
                       borderRadius: '8px',
                     }}
                   />
@@ -229,23 +253,24 @@ function Dashboard() {
           </div>
 
           {/* Confidence line chart */}
-          <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm border
-                          border-white/10 rounded-2xl p-6">
+          <div className="lg:col-span-2 bg-gray-50 border border-gray-200
+                          backdrop-blur-sm rounded-2xl p-6
+                          dark:bg-white/5 dark:border-white/10">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-purple-400" />
+              <TrendingUp className="w-5 h-5 text-purple-500 dark:text-purple-400" />
               Confidence History
             </h3>
 
             {lineData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={lineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="name" stroke="#666" />
-                  <YAxis stroke="#666" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis dataKey="name" stroke={axisStroke} />
+                  <YAxis stroke={axisStroke} />
                   <Tooltip
                     contentStyle={{
-                      background: '#0f0f0f',
-                      border: '1px solid #333',
+                      background: tooltipBg,
+                      border: `1px solid ${tooltipBorder}`,
                       borderRadius: '8px',
                     }}
                   />
@@ -265,17 +290,19 @@ function Dashboard() {
         {/* ─────────────────────────────────────────────────────────────
             RECENT ACTIVITY
         ─────────────────────────────────────────────────────────────── */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10
-                        rounded-2xl p-6">
+        <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
+                        rounded-2xl p-6
+                        dark:bg-white/5 dark:border-white/10">
 
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-400" />
+              <Clock className="w-5 h-5 text-blue-500 dark:text-blue-400" />
               Recent Activity
             </h3>
             <Link to="/history"
-                  className="text-sm text-blue-400 hover:text-blue-300
-                             flex items-center gap-1">
+                  className="text-sm text-blue-500 hover:text-blue-600
+                             flex items-center gap-1
+                             dark:text-blue-400 dark:hover:text-blue-300">
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -288,12 +315,13 @@ function Dashboard() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-              <p className="text-gray-400 mb-4">No scans yet</p>
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4
+                                   dark:text-gray-700" />
+              <p className="text-gray-500 mb-4 dark:text-gray-400">No scans yet</p>
               <Link to="/upload"
                     className="inline-flex items-center gap-2 px-6 py-3
                                bg-gradient-to-r from-blue-600 to-purple-600
-                               rounded-lg font-semibold hover:shadow-xl
+                               text-white rounded-lg font-semibold hover:shadow-xl
                                hover:shadow-blue-500/50 transition-all">
                 <Upload className="w-5 h-5" />
                 Upload First File
@@ -312,15 +340,16 @@ function Dashboard() {
 // ─────────────────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, gradient }) {
   return (
-    <div className="bg-white/5 backdrop-blur-sm border border-white/10
+    <div className="bg-gray-50 border border-gray-200 backdrop-blur-sm
                     rounded-2xl p-5 hover:border-blue-500/50 transition-all
-                    hover:scale-105">
+                    hover:scale-105
+                    dark:bg-white/5 dark:border-white/10">
       <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br
                        ${gradient} mb-3`}>
         <Icon className="w-5 h-5 text-white" />
       </div>
       <div className="text-3xl font-bold">{value}</div>
-      <div className="text-gray-400 text-sm mt-1">{label}</div>
+      <div className="text-gray-600 text-sm mt-1 dark:text-gray-400">{label}</div>
     </div>
   )
 }
@@ -333,15 +362,16 @@ function RecentScanRow({ scan }) {
 
   // Verdict colors
   const verdictColors = {
-    REAL:        'text-green-400 bg-green-500/10 border-green-500/30',
-    FAKE:        'text-red-400 bg-red-500/10 border-red-500/30',
-    SUSPICIOUS:  'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+    REAL:        'text-green-600 bg-green-500/10 border-green-500/30 dark:text-green-400',
+    FAKE:        'text-red-600 bg-red-500/10 border-red-500/30 dark:text-red-400',
+    SUSPICIOUS:  'text-yellow-600 bg-yellow-500/10 border-yellow-500/30 dark:text-yellow-400',
   }
 
   return (
-    <div className="flex items-center justify-between p-4 bg-black/40
-                    border border-white/5 rounded-xl
-                    hover:border-blue-500/30 transition cursor-pointer"
+    <div className="flex items-center justify-between p-4 bg-white
+                    border border-gray-200 rounded-xl
+                    hover:border-blue-500/30 transition cursor-pointer
+                    dark:bg-black/40 dark:border-white/5"
          onClick={() => navigate(`/results/${scan.scan_id}`)}>
 
       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -356,7 +386,7 @@ function RecentScanRow({ scan }) {
 
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <div className="text-sm text-gray-400">Risk</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Risk</div>
           <div className="font-bold">{scan.risk_score}/100</div>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-semibold
@@ -374,7 +404,8 @@ function RecentScanRow({ scan }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function EmptyChartState({ message }) {
   return (
-    <div className="h-[250px] flex flex-col items-center justify-center text-gray-500">
+    <div className="h-[250px] flex flex-col items-center justify-center
+                    text-gray-400 dark:text-gray-500">
       <BarChart3 className="w-12 h-12 mb-2 opacity-30" />
       <p>{message}</p>
     </div>
