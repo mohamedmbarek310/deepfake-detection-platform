@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Shield, ArrowLeft, FileText, Calendar, Eye, Loader2,
   LogOut, AlertTriangle, CheckCircle2, AlertCircle, Upload,
-  Filter, Clock, AlertOctagon, Search
+  Filter, Clock, AlertOctagon, Search, Download
 } from 'lucide-react'
 import { getHistory, logout } from '../services/api'
 import ThemeToggle from '../components/ThemeToggle'
@@ -37,6 +37,37 @@ function History() {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Export history as CSV
+  // ─────────────────────────────────────────────────────────────────────────
+  const exportCSV = () => {
+    const headers = [
+      'Filename', 'Date', 'Verdict', 'Risk Score',
+      'Confidence %', 'Fake Frames', 'Real Frames', 'Total Frames'
+    ]
+
+    const rows = scans.map(scan => [
+      `"${scan.filename}"`,
+      `"${new Date(scan.created_at).toLocaleString()}"`,
+      scan.verdict,
+      scan.risk_score ?? 0,
+      scan.confidence ?? 0,
+      scan.fake_frames ?? 0,
+      scan.real_frames ?? 0,
+      scan.total_frames ?? 0,
+    ])
+
+    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href     = url
+    link.download = `DeepGuard_History_${new Date().toISOString().slice(0,10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -145,17 +176,34 @@ function History() {
         </Link>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">
-            Scan{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500
-                             bg-clip-text text-transparent">
-              History
-            </span>
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View and manage all your past detections
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center
+                        md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              Scan{' '}
+              <span className="bg-gradient-to-r from-blue-400 to-purple-500
+                               bg-clip-text text-transparent">
+                History
+              </span>
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              View and manage all your past detections
+            </p>
+          </div>
+
+          {/* Export button */}
+          {scans.length > 0 && (
+            <button
+              onClick={exportCSV}
+              className="inline-flex items-center gap-2 px-5 py-2.5
+                         bg-gradient-to-r from-blue-600 to-purple-600
+                         text-white rounded-xl font-semibold
+                         hover:shadow-xl hover:shadow-blue-500/50
+                         transition-all whitespace-nowrap">
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+          )}
         </div>
 
         {/* Summary stats */}

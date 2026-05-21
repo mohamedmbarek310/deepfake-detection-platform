@@ -268,13 +268,16 @@ def get_history(
 
     return [
         {
-            "scan_id":     s.id,
-            "filename":    s.filename,
-            "verdict":     s.verdict,
-            "risk_score":  s.risk_score,
-            "risk_level":  s.risk_level,
-            "confidence":  s.confidence,
-            "created_at":  s.created_at.isoformat()
+            "scan_id":      s.id,
+            "filename":     s.filename,
+            "verdict":      s.verdict,
+            "risk_score":   s.risk_score,
+            "risk_level":   s.risk_level,
+            "confidence":   s.confidence,
+            "fake_frames":  s.fake_frames,
+            "real_frames":  s.real_frames,
+            "total_frames": s.total_frames,
+            "created_at":   s.created_at.isoformat()
         }
         for s in scans
     ]
