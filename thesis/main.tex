@@ -1,0 +1,84 @@
+%==============================================================
+%  DeepGuard AI — Final Year Project Report
+%  Author : Mohamed Mbarek
+%  Year   : 2025–2026
+%  University : Faculté des Sciences de Gafsa
+%==============================================================
+
+\documentclass[12pt,a4paper,openany,oneside]{book}
+
+% ---------- Load configuration ----------
+\input{config/packages}
+\input{config/settings}
+\input{config/commands}
+
+% ---------- Bibliography ----------
+\addbibresource{references.bib}
+
+%==============================================================
+%  Toggle empty front matter sections
+%  Set to true once you have figures/tables to display
+%==============================================================
+\newif\ifshowfigureslist
+\newif\ifshowtableslist
+\showfigureslistfalse  % Set to \showfigureslisttrue when you have figures
+\showtableslistfalse   % Set to \showtableslisttrue when you have tables
+
+\begin{document}
+
+% =============== FRONT MATTER ===============
+\frontmatter
+\pagestyle{plain}
+
+\input{frontmatter/cover}
+\input{frontmatter/dedication}
+\input{frontmatter/acknowledgments}
+\input{frontmatter/abstract}
+
+% Table of contents
+\clearpage
+\pdfbookmark[0]{Table of Contents}{toc}
+\tableofcontents
+
+% List of Figures (only if enabled)
+\ifshowfigureslist
+    \clearpage
+    \listoffigures
+    \addcontentsline{toc}{chapter}{List of Figures}
+\fi
+
+% List of Tables (only if enabled)
+\ifshowtableslist
+    \clearpage
+    \listoftables
+    \addcontentsline{toc}{chapter}{List of Tables}
+\fi
+
+% =============== MAIN MATTER ===============
+\mainmatter
+\pagestyle{fancy}
+
+% General Introduction
+\chapter*{General Introduction}
+\addcontentsline{toc}{chapter}{General Introduction}
+\input{chapters/introduction}
+
+% Chapters
+\input{chapters/chapter1_context}
+\input{chapters/chapter2_analysis}
+\input{chapters/chapter3_design}
+\input{chapters/chapter4_implementation}
+\input{chapters/chapter5_testing}
+
+% General Conclusion
+\chapter*{General Conclusion}
+\addcontentsline{toc}{chapter}{General Conclusion}
+\input{chapters/conclusion}
+
+% =============== BACK MATTER ===============
+\backmatter
+
+% Bibliography
+\printbibliography[heading=bibintoc,title={References}]
+
+\end{document}

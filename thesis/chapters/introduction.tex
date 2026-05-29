@@ -1,0 +1,21 @@
+%==============================================================
+%  General Introduction
+%==============================================================
+
+For most of modern history, a photograph or a video served as a kind of evidence. If something appeared on a screen, the assumption was that someone, somewhere, had captured it with a camera. That assumption is now harder to defend. The same artificial intelligence that produces remarkable creative tools is also producing convincing synthetic images and videos of people who never said or did the things attributed to them. The shift has been quiet but rapid, and its consequences are still being measured.
+
+The term \textit{deepfake} entered public awareness around 2017, when an anonymous developer used a deep learning technique called Generative Adversarial Networks to swap faces in videos. What started as a curiosity on online forums quickly evolved into a category of content that millions of people now encounter without realizing it. Today, free or cheap tools can replace a face in a video, clone a voice from a short audio sample, or generate an entirely synthetic portrait that looks like a real person. The barrier to entry has effectively collapsed. The applications range from harmless entertainment to deliberate disinformation, with documented cases in journalism, politics, finance, and personal identity theft.
+
+Detecting manipulated media is, in principle, the natural counter-response. In practice it has turned out to be one of the harder problems in modern computer vision. The latest generative models produce results that the human eye genuinely cannot distinguish from real photographs in most viewing conditions. Specialized detection tools do exist, but they tend to be commercial products aimed at governments and large media organizations, with prices and access restrictions that put them out of reach of journalists, researchers, students, and ordinary citizens who arguably need them the most.
+
+This thesis presents \deepguard{}, a final year project carried out at the Faculty of Sciences of Gafsa, in partial fulfillment of the requirements for the Bachelor's degree in Computer Science (Software Engineering and Information Systems). The platform offers a complete pipeline for analyzing images and videos, returning a clear verdict on their authenticity, and producing a forensic report that can be downloaded, shared, or consulted directly through a personal dashboard. The goal is not to compete with the commercial solutions mentioned above, but to demonstrate that a working, accessible, and well-engineered alternative can be built within the scope of an academic project.
+
+The development followed the 2TUP (Two Track Unified Process) methodology, which separates the analysis of a software project into two parallel tracks --- one focused on what the system should do, the other on how it should be built --- and merges them into a unified architecture at the end. The choice was deliberate. It suits a solo developer better than team-based approaches such as Scrum, and it reflects naturally in the structure of the chapters that follow.
+
+The report is organized into five chapters.\\[6pt]
+\textbf{Chapter 1} sets the general context, surveys existing detection tools, and presents the methodology and timeline of the project.\\[6pt]
+\textbf{Chapter 2} follows the functional track of 2TUP, identifying the actors, capturing the functional and non-functional requirements, and modeling the expected behavior of the system through use case and sequence diagrams.\\[6pt]
+\textbf{Chapter 3} covers the technical track and the merge phase, justifying the technology choices and describing the global architecture, the database design, the REST API, and the AI detection pipeline.\\[6pt]
+\textbf{Chapter 4} presents the implementation itself, with code structure explanations and screenshots of the finished application.\\[6pt]
+\textbf{Chapter 5} reports on the testing campaign, covering AI model accuracy, functional tests, edge cases, and security checks.\\[6pt]
+A \textbf{General Conclusion} closes the report by summarizing what was achieved and discussing possible future improvements.

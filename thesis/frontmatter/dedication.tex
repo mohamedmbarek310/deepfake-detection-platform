@@ -1,0 +1,54 @@
+%==============================================================
+%  Dedication Page — Right-aligned, classic style
+%  This page is intentionally unnumbered (decorative page)
+%  Counter is rolled back so the next page (Acknowledgments) = "i"
+%==============================================================
+
+\clearpage
+\thispagestyle{empty}
+
+\vspace*{\fill}
+
+\begin{center}
+    {\Huge\itshape\color{deepblue} Dedication}
+\end{center}
+
+\vspace{1.5cm}
+
+\begin{flushright}
+\begin{minipage}{0.7\textwidth}
+\itshape
+\setstretch{1.3}
+\begin{flushright}
+
+\textit{To my beloved parents,}\\
+whose endless love, patience, and sacrifices\\
+made every step of this journey possible.\\[14pt]
+
+\textit{To my family,}\\
+for their continuous encouragement\\
+and unwavering belief in me.\\[14pt]
+
+\textit{To my friends,}\\
+who shared the long nights, the struggles,\\
+and the small victories along the way.\\[14pt]
+
+\textit{To my teachers and supervisor,}\\
+who guided me with their knowledge,\\
+patience, and trust.\\[14pt]
+
+\textit{And to everyone who supported me,}\\
+even with a single word of encouragement.\\[24pt]
+
+\textbf{Thank you.}\\[6pt]
+\textit{— Mohamed Mbarek}
+
+\end{flushright}
+\end{minipage}
+\end{flushright}
+
+\vspace*{\fill}
+
+% Roll back the page counter so this page doesn't count.
+% Result: next page (Acknowledgments) starts at "i".
+\addtocounter{page}{-1}

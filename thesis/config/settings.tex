@@ -1,0 +1,65 @@
+%==============================================================
+%  Document Settings
+%==============================================================
+
+% ---------- Paragraph Settings ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+
+% ---------- Caption Style ----------
+\usepackage{caption}
+\captionsetup{
+    font={small,it},
+    labelfont={bf,color=deepblue},
+    labelsep=colon,
+    justification=centering
+}
+
+% ---------- Custom Box for Highlighted Text ----------
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{infobox}[1][]{
+    colback=deeplight,
+    colframe=deepblue,
+    fonttitle=\bfseries,
+    arc=2mm,
+    boxrule=1pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+    #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+    colback=yellow!10,
+    colframe=riskorange,
+    fonttitle=\bfseries,
+    arc=2mm,
+    boxrule=1pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+    #1
+}
+
+\newtcolorbox{notebox}[1][]{
+    colback=blue!5,
+    colframe=deepaccent,
+    fonttitle=\bfseries,
+    arc=2mm,
+    boxrule=1pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+    #1
+}
+
+% ---------- Custom Tabular ----------
+\renewcommand{\arraystretch}{1.3}
+
+% ---------- Toc Style ----------
+\usepackage{tocloft}
+\renewcommand{\cftchapfont}{\bfseries\color{deepblue}}
+\renewcommand{\cftsecfont}{\color{deepdark}}
+\renewcommand{\cftchappagefont}{\bfseries\color{deepblue}}
+
+% ---------- Disable widow & orphan lines ----------
+\widowpenalty=10000
+\clubpenalty=10000
+
+% ---------- Better line breaking ----------
+\sloppy

@@ -1,0 +1,169 @@
+%==============================================================
+%  Chapter 1 — General Context
+%==============================================================
+
+\chapter{General Context}
+\label{chap:context}
+
+\textit{This first chapter sets the stage for the entire project. It explains the broader context in which the work takes place, defines the problem that motivated it, examines what already exists on the market, and introduces the proposed solution. The chapter also presents the methodology that guided the development process and outlines the overall timeline.}
+
+\vspace{1cm}
+
+%==============================================================
+\section{Introduction}
+%==============================================================
+
+Artificial intelligence has progressed at a pace that very few people anticipated even five years ago. Tools that once required research labs and expensive hardware can now be installed on a laptop and used by anyone with basic computer skills. This shift has opened the door to many positive applications, but it has also given rise to new categories of risk. One of the most discussed of these risks is the deepfake: a synthetic image or video, generated or manipulated by AI, that imitates a real person convincingly enough to mislead the average viewer.
+
+The work presented in this report responds to that specific problem. It introduces \deepguard{}, a web-based platform that uses modern computer vision techniques to determine whether an uploaded image or video is genuine or has been generated or altered by AI. Beyond a simple verdict, the platform produces a detailed forensic analysis that the user can consult, share, or download as a professional report. This chapter prepares the ground for everything that follows: it describes the problem, surveys what existing tools offer, and explains why a new approach was worth building.
+
+%==============================================================
+\section{Project Context}
+%==============================================================
+
+The last few years have seen a noticeable acceleration in generative AI technologies. Models capable of creating realistic faces, synthetic voices, and full video sequences have moved from research papers into open-source repositories and consumer applications. Tools such as Stable Diffusion, Midjourney, and various face-swap programs are now widely available, often free of charge, and require very little technical background to operate. As a direct result, the cost and effort required to produce convincing synthetic media have collapsed.
+
+This democratization is, in many ways, a positive development. Filmmakers experiment with new visual effects, educators recreate historical scenes, and small businesses generate marketing material without large budgets. But the same tools also make it easier to fabricate evidence, impersonate public figures, and circulate false information that looks visually authentic. Journalists, lawyers, and even ordinary social media users now face a question that did not really exist a decade ago: \textit{can I still trust what I see on a screen?}
+
+From an academic perspective, the topic sits at an interesting crossroads between several fields: computer vision, cybersecurity, digital forensics, and software engineering. It also has an unmistakable social dimension, since the spread of manipulated media touches issues of trust, politics, and personal reputation. These combined factors made the subject a natural fit for a final year project in software engineering, where both the technical depth and the real-world relevance were strong enough to justify a complete platform rather than a small prototype.
+
+%==============================================================
+\section{Problem Statement}
+%==============================================================
+
+The central problem is straightforward to describe but difficult to solve in practice. Given a piece of digital content, usually an image or a short video, how can a user reliably determine whether it shows a real human face or a synthetic one? The challenge is no longer purely visual. Modern deepfakes can fool the human eye, and even experienced viewers admit that distinguishing real from fake media has become nearly impossible without technical assistance.
+
+Several concrete situations illustrate why this matters. A news outlet receiving a leaked video of a politician must verify its authenticity before publishing. A recruiter conducting a remote interview wants to be sure that the candidate on the screen is genuinely the person being hired. A bank reviewing a video-based identity check needs to detect any attempt to impersonate a client. In each of these cases, the cost of being wrong is significant, ranging from reputational damage to financial loss to legal consequences.
+
+The problem becomes harder when the analysis must remain accessible to non-experts. A solution that requires installing complex Python libraries, configuring GPUs, or interpreting raw model outputs would not help most of the people who actually need it. What is needed is a tool that can be used by a journalist, a teacher, or a curious citizen, with results presented clearly and supported by evidence that the user can understand.
+
+%==============================================================
+\section{Study of Existing Solutions}
+%==============================================================
+
+Several deepfake detection tools already exist on the market, each with a different focus and different limitations. Before designing \projectname{}, a study of these existing solutions was carried out to understand what works well and where current platforms fall short.
+
+\textbf{Deepware Scanner} is a free online tool that allows users to upload videos and receive a probability score indicating whether the content is a deepfake. It is one of the most accessible solutions for the general public, but the analysis is limited to videos and does not include any forensic metadata inspection or detailed reporting.
+
+\textbf{Sensity AI} is a commercial platform aimed at enterprises and government agencies. It offers high accuracy and continuous monitoring features, but it is closed-source, expensive, and not available to individual users or small organizations. Its detailed reports are also locked behind a paywall.
+
+\textbf{Intel FakeCatcher} is a real-time deepfake detector developed by Intel. It uses an interesting biological signal called photoplethysmography, which measures subtle changes in blood flow visible in human skin. While the approach is innovative, the technology is not openly available and requires Intel-specific hardware to run efficiently.
+
+\textbf{Microsoft Video Authenticator} was developed during the 2020 U.S. presidential election to help fight disinformation. It provides a confidence score for videos and images but has been distributed only to selected media partners, which makes it inaccessible to most users.
+
+Table~\ref{tab:existing-solutions} summarizes the main strengths and weaknesses of each of these tools compared to the goals of this project.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{6pt}
+\begin{tabularx}{\textwidth}{|>{\bfseries}l|X|X|}
+\hline
+\rowcolor{deeplight}
+\textbf{Solution} & \textbf{Strengths} & \textbf{Limitations} \\
+\hline
+Deepware Scanner & Free, simple interface, no installation & Videos only, no forensics, no reports \\
+\hline
+Sensity AI & High accuracy, enterprise-grade & Closed-source, expensive, not for individuals \\
+\hline
+Intel FakeCatcher & Innovative biological signal approach & Not publicly available, hardware-dependent \\
+\hline
+Microsoft Video Authenticator & Backed by Microsoft research & Distribution restricted to media partners \\
+\hline
+\rowcolor{deeplight}
+\textbf{\projectname{}} & \textbf{Free, open, complete forensics, reports, sharing} & \textbf{Academic project, faces only (for now)} \\
+\hline
+\end{tabularx}
+\caption{Comparison of existing deepfake detection solutions.}
+\label{tab:existing-solutions}
+\end{table}
+
+Two main gaps emerge from this comparison. First, no single tool combines deepfake detection with full digital forensics in an accessible interface. Second, the most powerful systems are either locked behind commercial licenses or restricted to selected partners, leaving the general public without a reliable option. These gaps justified the development of a new solution.
+
+%==============================================================
+\section{Proposed Solution}
+%==============================================================
+
+The solution proposed in this project is \deepguard{}, a complete web platform that combines artificial intelligence and digital forensics in a single tool. The objective is not to compete with billion-dollar commercial products, but rather to demonstrate that a well-designed academic project can offer features that real users actually need, in a clean and accessible format.
+
+At its core, \projectname{} uses a Vision Transformer model (ViT) fine-tuned on real and synthetic face data. The model is paired with a face detection step (MTCNN) so that the analysis focuses precisely on the regions that matter. For videos, frames are extracted at regular intervals and analyzed one by one, then aggregated into a single risk score on a scale from 0 to 100. The result is a clear verdict (real or fake) accompanied by a confidence percentage, a forensic report, and a downloadable PDF.
+
+What distinguishes \projectname{} from most existing tools is the integration of digital forensics into the same workflow. When an image is uploaded, the system also reads its EXIF metadata, checks for traces of editing software such as Photoshop or Midjourney, and flags suspicious patterns like missing camera information or unusual timestamps. This additional layer of analysis gives the user more than just a score; it gives them evidence they can interpret and trust.
+
+Finally, the entire experience is designed around usability. A modern interface built with React and Tailwind CSS allows users to drag and drop their files, see real-time progress, browse their scan history, switch between light and dark themes, and share results through a public link. These features make the platform suitable for journalists, researchers, students, and any user who needs a fast and credible second opinion on a piece of media.
+
+%==============================================================
+\section{Project Objectives}
+%==============================================================
+
+The project pursues a clear set of objectives, each chosen to address one specific aspect of the overall problem. They can be summarized as follows:
+
+\begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}]
+    \item Build a deepfake detection engine capable of analyzing both images and videos with a high level of accuracy.
+    \item Implement a risk scoring system that translates raw model outputs into a clear, four-level verdict that any user can understand.
+    \item Integrate a digital forensics module that extracts EXIF metadata and flags signs of AI generation or manual editing.
+    \item Develop a secure backend with user authentication so that personal data and scan history remain isolated and protected.
+    \item Design a modern, responsive web interface that supports drag-and-drop uploads, real-time feedback, and a dark mode.
+    \item Generate professional PDF reports and shareable result links so that the analysis can be communicated easily outside the platform.
+    \item Follow a clean, documented software engineering process that produces maintainable code and a system that can be extended in the future.
+\end{enumerate}
+
+These objectives also serve as the criteria against which the final result will be evaluated in Chapter~\ref{chap:testing}.
+
+%==============================================================
+\section{Methodology --- 2TUP}
+%==============================================================
+
+Choosing the right methodology was an important decision early in the project. Agile methods such as Scrum are popular in industry, but they are designed for teams of several people who can split work across roles. Because this project was carried out alone, a methodology that fits a solo developer was needed, while still providing the structure and documentation expected from a final year report.
+
+The selected approach is \textbf{2TUP} (\textit{Two Track Unified Process}), a UML-based methodology proposed by Hubert Tardieu and widely used in academic engineering projects~\cite{tardieu2002}. Its main idea is to separate the analysis of a project into two parallel tracks that progress independently before being merged at the end. This separation between \textit{what} the system should do and \textit{how} it should be built makes the design phase clearer and reduces the risk of mixing functional decisions with technical ones too early.
+
+The \textbf{functional track} concentrates on the user-facing side of the project. It identifies the actors, captures the functional and non-functional requirements, models the use cases, and produces the UML diagrams that describe the expected behavior of the system. In other words, it answers the question: \textit{what does the user need from this platform?}
+
+The \textbf{technical track} runs in parallel and focuses on the implementation side. It evaluates the technologies available, decides which architecture is most appropriate, and produces the technical models such as the class diagram, the database schema, and the API design. Its guiding question is: \textit{which tools and structures will deliver the required behavior?}
+
+Once both tracks have reached a sufficient level of detail, they enter the \textbf{merge phase}. At this point, the functional and technical decisions are combined into a unified general architecture, which then drives the actual implementation and testing of the system. This logical separation followed by a controlled merge proved well suited to the scope of \projectname{}, and it is reflected directly in the structure of the next chapters: Chapter~\ref{chap:analysis} covers the functional track, Chapter~\ref{chap:design} covers the technical track and the merge phase, and Chapter~\ref{chap:implementation} presents the realization phase that follows.
+
+%==============================================================
+\section{Development Plan}
+%==============================================================
+
+The development of \projectname{} was spread over four months, which is a realistic duration for a project of this scope when carried out by a single student. The work was divided into four main phases, each with a clear focus, although in practice the boundaries between them were never strictly fixed. Table~\ref{tab:gantt} presents the overall plan in a simplified Gantt-chart format.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{8pt}
+\begin{tabularx}{\textwidth}{|>{\bfseries}l|X|c|c|c|c|}
+\hline
+\rowcolor{deeplight}
+\textbf{Phase} & \textbf{Main Activities} & \textbf{M1} & \textbf{M2} & \textbf{M3} & \textbf{M4} \\
+\hline
+Research \& Setup &
+Literature review, study of existing tools, technology choices, environment setup, initial AI model testing
+& \cellcolor{deepaccent} & & & \\
+\hline
+Core AI \& Backend &
+Preprocessing pipeline, face detection, risk scoring, FastAPI backend, database design, JWT authentication
+& \cellcolor{deepaccent} & \cellcolor{deepaccent} & & \\
+\hline
+Frontend \& Integration &
+React frontend (all pages), API integration, dashboard, history, forensics module, theme system
+& & \cellcolor{deepaccent} & \cellcolor{deepaccent} & \\
+\hline
+Polish, Testing \& Defense &
+PDF reports, share links, edge case handling, full testing campaign, thesis writing, defense preparation
+& & & \cellcolor{deepaccent} & \cellcolor{deepaccent} \\
+\hline
+\end{tabularx}
+\caption{Simplified Gantt chart of the project (M1--M4 = months 1 to 4).}
+\label{tab:gantt}
+\end{table}
+
+The first month was mostly exploratory. A significant amount of time went into reading documentation, comparing existing solutions, and testing pre-trained models to confirm that a usable accuracy could be reached without training a model from scratch. The second and third months were the most intense, with most of the AI pipeline, the backend, and the frontend being built during this period. The final month was reserved for polishing, edge case handling, the full testing campaign, and the writing of this report.
+
+%==============================================================
+\section{Conclusion}
+%==============================================================
+
+This chapter has introduced the broader context of the project, explained the problem it tries to solve, examined what existing tools currently offer, and presented \deepguard{} as a complete and accessible alternative. The objectives have been clearly stated, and the chosen methodology (2TUP) and overall timeline have been described. The next chapter takes the first concrete step into the project itself by following the functional track of 2TUP: identifying the actors, capturing the requirements, and modeling the expected behavior of the system through UML diagrams.

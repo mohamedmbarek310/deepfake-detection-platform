@@ -1,0 +1,38 @@
+%==============================================================
+%  Custom Commands & Shortcuts
+%==============================================================
+
+% Project name shortcut
+\newcommand{\deepguard}{\textbf{DeepGuard AI}}
+\newcommand{\projectname}{DeepGuard AI}
+
+% Inline code
+\newcommand{\code}[1]{\texttt{\textcolor{deepblue}{#1}}}
+
+% Tech name highlight (Python, FastAPI, etc.)
+\newcommand{\tech}[1]{\textbf{\textcolor{deeppurple}{#1}}}
+
+% Bold blue keyword
+\newcommand{\keyword}[1]{\textbf{\textcolor{deepblue}{#1}}}
+
+% Figure helper (simplifies inserting figures)
+\newcommand{\addfigure}[3]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=#2\textwidth]{#1}
+        \caption{#3}
+        \label{fig:#1}
+    \end{figure}
+}
+
+% Placeholder for missing figures
+\newcommand{\placeholderfig}[2]{%
+    \begin{figure}[H]
+        \centering
+        \fbox{\parbox[c][6cm][c]{0.8\textwidth}{%
+            \centering\Large\textcolor{gray}{[Figure Placeholder]}\\
+            \normalsize\textcolor{gray}{#1}
+        }}
+        \caption{#2}
+    \end{figure}
+}

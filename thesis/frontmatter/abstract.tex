@@ -1,0 +1,59 @@
+%==============================================================
+%  Abstract Page (English + French Résumé)
+%==============================================================
+
+\cleardoublepage
+\thispagestyle{empty}
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+\setstretch{1.4}
+
+The rapid advancement of generative artificial intelligence has made the creation of highly realistic synthetic media — known as \textit{deepfakes} — accessible to anyone. While the technology has legitimate creative uses, it has also become a serious threat to digital trust, journalism, and personal identity. Detecting manipulated media is no longer optional; it is a necessity.
+
+\vspace{5pt}
+
+This project, titled \textbf{\projectname}, presents a complete web-based platform for detecting deepfakes in images and videos and producing professional digital forensics reports. The system combines a Vision Transformer (ViT) model from Hugging Face with face detection (MTCNN), image normalization techniques, EXIF metadata analysis, and a clean user interface built with React and Tailwind CSS. The backend, powered by FastAPI and PostgreSQL, exposes a secured REST API protected by JWT authentication.
+
+\vspace{5pt}
+
+The platform offers several features designed for real-world use: image and video analysis, risk scoring (0--100), forensic metadata inspection, PDF report generation, shareable result links, and a personal dashboard with scan history. The development followed the \textbf{2TUP (Two Track Unified Process)} methodology, which separates functional and technical concerns and proved well suited to a solo academic project of this scope.
+
+\vspace{5pt}
+
+The final system demonstrates that effective deepfake detection can be combined with explainability and forensics in a single, user-friendly application — providing a practical tool for journalists, researchers, and the general public.
+
+\vspace{10pt}
+
+\noindent\textbf{Keywords:} Deepfake detection, Artificial Intelligence, Vision Transformer, Digital Forensics, EXIF Metadata, FastAPI, React, JWT Authentication, Cybersecurity, Media Authenticity.
+
+\newpage
+
+% ---------- French Résumé ----------
+\addcontentsline{toc}{chapter}{Résumé}
+\begin{center}
+\rule{0.4\textwidth}{0.4pt}
+\end{center}
+
+\noindent\textbf{\large Résumé}
+
+\vspace{8pt}
+
+L'évolution rapide de l'intelligence artificielle générative a rendu la création de médias synthétiques très réalistes — appelés \textit{deepfakes} — accessible à tous. Bien que cette technologie ait des usages créatifs légitimes, elle est également devenue une menace sérieuse pour la confiance numérique, le journalisme et l'identité personnelle. La détection des médias manipulés n'est plus une option, c'est une nécessité.
+
+\vspace{5pt}
+
+Ce projet, intitulé \textbf{\projectname}, présente une plateforme web complète pour la détection de deepfakes dans les images et les vidéos, ainsi que la génération de rapports professionnels d'analyse forensique. Le système combine un modèle Vision Transformer (ViT) issu de Hugging Face avec la détection de visages (MTCNN), des techniques de normalisation d'images, l'analyse des métadonnées EXIF, et une interface utilisateur moderne développée avec React et Tailwind CSS. Le backend, propulsé par FastAPI et PostgreSQL, expose une API REST sécurisée par authentification JWT.
+
+\vspace{5pt}
+
+La plateforme propose plusieurs fonctionnalités pensées pour un usage réel : analyse d'images et de vidéos, score de risque (0--100), inspection des métadonnées forensiques, génération de rapports PDF, liens de résultats partageables, et un tableau de bord personnel avec historique des analyses. Le développement a suivi la méthodologie \textbf{2TUP (Two Track Unified Process)}, qui sépare les préoccupations fonctionnelles et techniques et s'est révélée bien adaptée à un projet académique individuel de cette envergure.
+
+\vspace{5pt}
+
+Le système final démontre que la détection efficace des deepfakes peut être combinée avec l'explicabilité et l'analyse forensique au sein d'une seule application conviviale — offrant un outil pratique pour les journalistes, les chercheurs et le grand public.
+
+\vspace{10pt}
+
+\noindent\textbf{Mots-clés :} Détection de deepfake, Intelligence Artificielle, Vision Transformer, Analyse Forensique, Métadonnées EXIF, FastAPI, React, Authentification JWT, Cybersécurité, Authenticité des Médias.

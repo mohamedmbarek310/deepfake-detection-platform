@@ -1,0 +1,131 @@
+%==============================================================
+%  Cover Page — Official University Template (English version)
+%  University logo: 3cm height
+%  Header minipages: CENTER-aligned [c] (fixes baseline overflow)
+%==============================================================
+
+\begin{titlepage}
+    \pagecolor{white}
+
+    % Top decorative bar
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[deepblue] (current page.north west) rectangle ([yshift=-0.7cm]current page.north east);
+        \fill[deeppurple] ([yshift=-0.7cm]current page.north west) rectangle ([yshift=-0.85cm]current page.north east);
+    \end{tikzpicture}
+
+    \vspace*{0cm}
+
+    %---------- Three-column institutional header (CENTER-aligned) ----------
+    % LEFT text | CENTER University logo | RIGHT text
+    \noindent
+    \begin{minipage}[c]{0.34\textwidth}
+        \centering\scriptsize
+        \textbf{Republic of Tunisia}\\
+        Ministry of Higher Education\\
+        and Scientific Research\\
+        \textbf{University of Gafsa}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{0.28\textwidth}
+        \centering
+        % University of Gafsa logo (real image)
+        \includegraphics[height=3cm]{logo_university.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{0.34\textwidth}
+        \centering\scriptsize
+        \textbf{Faculty of Sciences of Gafsa}\\
+        \textbf{Department of Computer Science}\\
+        Final Year Project\\
+        Order N°: PFE-2026/.......
+    \end{minipage}
+
+    \vspace{0.15cm}
+
+    % Horizontal separator (blue line)
+    {\color{deepblue}\rule{\textwidth}{0.8pt}}
+
+    \vspace{0.15cm}
+
+    %---------- Department of Computer Science logo (real image, centered) ----------
+    \begin{center}
+        \includegraphics[height=1.3cm]{logo_department.png}
+    \end{center}
+
+    \vspace{0.15cm}
+
+    %---------- Main title (compact) ----------
+    \begin{center}
+        {\large\bfseries FINAL YEAR PROJECT REPORT}\\[2pt]
+        {\footnotesize\itshape Submitted to}\\[1pt]
+        {\small\bfseries Faculty of Sciences of Gafsa}\\[1pt]
+        {\footnotesize\itshape In partial fulfillment of the requirements for the}\\[2pt]
+        {\small\bfseries BACHELOR'S DEGREE IN COMPUTER SCIENCE:}\\[1pt]
+        {\small\bfseries SOFTWARE ENGINEERING AND INFORMATION SYSTEMS}
+    \end{center}
+
+    \vspace{0.15cm}
+
+    %---------- Project title block (between two lines) ----------
+    {\color{deepblue}\rule{\textwidth}{1pt}}
+    \begin{center}
+        \vspace{3pt}
+        {\huge\bfseries\textcolor{deepdark}{DeepGuard AI}}\\[2pt]
+        {\normalsize\textcolor{deepblue}{\itshape An AI-Powered Deepfake Detection}}\\[1pt]
+        {\normalsize\textcolor{deepblue}{\itshape and Digital Forensics Platform}}
+        \vspace{3pt}
+    \end{center}
+    {\color{deepblue}\rule{\textwidth}{1pt}}
+
+    \vspace{0.2cm}
+
+    %---------- Presented by ----------
+    \begin{center}
+        {\footnotesize\bfseries Presented by:}\\[1pt]
+        {\normalsize\bfseries Mohamed Mbarek}
+    \end{center}
+
+    \vspace{0.15cm}
+
+    %---------- Jury ----------
+    \begin{center}
+        {\footnotesize\itshape Defended on \dotfill/\dotfill/\dotfill\ before the jury composed of:}
+    \end{center}
+
+    \vspace{2pt}
+
+    \begin{center}
+    \renewcommand{\arraystretch}{1.0}
+    \small
+    \begin{tabular}{p{5.5cm} p{5.5cm}}
+        \textbf{Mr./Mrs.} \dotfill           & \textbf{President}    \\
+        \textbf{Mr./Mrs.} \dotfill           & \textbf{Examiner}     \\
+        \textbf{Mr. Othmani Mohamed}         & \textbf{Supervisor}   \\
+    \end{tabular}
+    \end{center}
+
+    \vspace{0.3cm}
+
+    %---------- Academic year (our modern style) ----------
+    \begin{center}
+    \begin{tikzpicture}
+        \node[rectangle, draw=deepblue, line width=0.8pt, rounded corners=3pt,
+              fill=deeplight, inner sep=5pt, minimum width=4.5cm]
+              {\small\textbf{Academic Year: 2025--2026}};
+    \end{tikzpicture}
+    \end{center}
+
+    \vfill
+
+    % Bottom decorative bar
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[deeppurple] ([yshift=0.85cm]current page.south west) rectangle ([yshift=0.7cm]current page.south east);
+        \fill[deepblue] ([yshift=0.7cm]current page.south west) rectangle (current page.south east);
+    \end{tikzpicture}
+
+\end{titlepage}
+
+\nopagecolor
+
+%---------- Page numbering ----------
+\setcounter{page}{1}
