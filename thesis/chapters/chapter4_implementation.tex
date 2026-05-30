@@ -7,31 +7,236 @@
 
 \textit{This chapter presents the practical realization of the project. It describes the development environment, the implementation of the AI detection pipeline, the backend, the frontend, the forensics modules, and includes screenshots of the final application.}
 
-\vspace{1cm}
+\vspace{0.8cm}
 
 \section{Introduction}
-\lipsum[1]
+
+The previous chapter described the technical design of \deepguard{} from the technology stack down to the class diagram. This chapter takes the next step and shows how that design was turned into actual code. It walks through the development environment, the implementation of the AI detection pipeline, the backend modules, the frontend pages, the forensics layer, and the PDF report generation. It also presents a series of screenshots of the running platform, which give the most direct view of what the user actually sees.
+
+The description stays at the level of structure and key choices rather than exhaustive code listings. A small number of code snippets are included where they illustrate the most important logic of the system; the complete source is available in the project repository.
 
 \section{Development Environment}
-\lipsum[2]
+
+The platform was developed entirely on a Windows 11 Pro machine running locally, with no cloud services involved beyond Hugging Face for the model weights and GitHub for source control. The choice of a fully local environment was deliberate: it keeps the project reproducible, removes external dependencies during the defense, and lets the demo run with or without an internet connection.
+
+The Python side of the project runs in a virtual environment located at \code{C:\textbackslash{}Users\textbackslash{}moham\textbackslash{}deepfake-detection-platform\textbackslash{}venv}, activated before every backend command. Python 3.10.11 was selected as the runtime because it is the most stable recent version supported by all the AI libraries used in the project. The full list of Python dependencies includes \code{torch} 2.11.0 and \code{transformers} 5.8.0 for model inference, \code{facenet-pytorch} 2.5.3 for face detection, \code{opencv-python} 4.13.0.92 for video processing, \code{Pillow} 12.2.0 and \code{NumPy} 2.2.6 for image handling, \code{fastapi} 0.136.1 and \code{uvicorn} 0.46.0 for the web layer, \code{sqlalchemy} 2.0 and \code{psycopg2} for the database, \code{python-jose} for JWT signing, \code{bcrypt} 4.0.1 with \code{passlib} for password hashing, \code{exifread} for metadata, \code{reportlab} for PDF generation, and \code{python-dotenv} for environment variables.
+
+The frontend runs on Node.js with React and Vite. Tailwind CSS v4 handles styling, with \code{lucide-react} for icons, \code{recharts} for charts, \code{axios} for HTTP requests, \code{react-router-dom} for routing, and \code{react-dropzone} for the drag-and-drop upload zone.
+
+PostgreSQL runs locally on the default port 5432 and is administered through pgAdmin during development. The database name is \code{deepfake\_db} and is created once through pgAdmin before the backend starts. Environment variables, including the database URL and the JWT secret key, are stored in a \code{.env} file at the project root and loaded automatically through \code{python-dotenv}.
+
+The platform requires two terminal sessions to run, one for the backend and one for the frontend.
+
+\begin{verbatim}
+# Terminal 1 - Backend
+cd C:\Users\moham\deepfake-detection-platform
+venv\Scripts\activate
+cd backend
+uvicorn main:app --reload
+
+# Terminal 2 - Frontend
+cd C:\Users\moham\deepfake-detection-platform\frontend
+npm run dev
+\end{verbatim}
+
+Once both processes are running, the frontend is accessible at \code{http://localhost:5173}, the backend API at \code{http://127.0.0.1:8000}, and the automatically generated Swagger documentation at \code{http://127.0.0.1:8000/docs}.
 
 \section{AI Detection Implementation}
-\lipsum[3]
+
+The AI detection pipeline lives in three modules: \code{preprocessor.py}, \code{normalizer.py}, and \code{detector.py}. The first prepares the input data, the second cleans it up, and the third runs the model and computes the verdict.
+
+The preprocessing module accepts a file path and returns a list of cropped face images together with the frame numbers they came from. If the input is a video, OpenCV opens it and reads frames in a loop, keeping only every tenth frame. If the input is a still image, the same logic runs once with frame number zero. Each retained frame is converted from BGR to RGB (because OpenCV defaults to BGR while the ViT model expects RGB), and then passed to MTCNN through the \code{facenet-pytorch} library. MTCNN returns a list of bounding boxes, each of which is used to crop the corresponding face from the frame and resize it to 224 by 224 pixels.
+
+The normalizer module is run on each cropped face before it reaches the model. The normalization sequence removes color casts left by photo filters, applies an exposure correction based on the mean luminance of the face region, and reduces high-frequency noise. This processing makes the detector robust against the kind of cosmetic editing that is common on social media and that would otherwise push genuine photographs into the suspicious range. The effect was verified during testing: a real face passed through Instagram-style filters still produces an AUTHENTIC verdict (test 2.6 in the testing matrix of Chapter \ref{chap:testing}).
+
+The detector module loads the Hugging Face ViT model at startup and keeps it in memory between requests. Loading the model is the most expensive single operation in the entire stack, around four seconds on the target hardware, so reusing the same in-memory instance across requests is essential for performance. Each face is passed through the model individually and produces a pair of probabilities (real, fake) that sum to one.
+
+The per-face predictions are aggregated into a single risk score and mapped to one of the four categorical verdicts. The aggregation logic is captured in the following function:
+
+\begin{verbatim}
+def calculate_risk_score(predictions):
+    fake_probs = [p["fake"] for p in predictions]
+    avg_fake_prob = sum(fake_probs) / len(fake_probs)
+    risk_score = round(avg_fake_prob * 100)
+
+    if risk_score <= 20:
+        risk_level = "AUTHENTIC"
+    elif risk_score <= 50:
+        risk_level = "SUSPICIOUS"
+    elif risk_score <= 80:
+        risk_level = "LIKELY_FAKE"
+    else:
+        risk_level = "HIGHLY_FAKE"
+
+    return risk_score, risk_level
+\end{verbatim}
+
+The function takes the list of per-face predictions, averages the fake probabilities, scales the result up by one hundred, rounds to the nearest integer, and then maps the integer to the categorical verdict using the thresholds chosen empirically during testing.
 
 \section{Backend Implementation}
-\lipsum[4]
+
+The backend is structured around a single FastAPI application instantiated in \code{main.py}. The route definitions live in the same file, but the actual logic of each route is delegated to one of the specialized modules: \code{auth.py} for authentication, \code{detector.py} for analysis, \code{forensics.py} for metadata, and \code{report.py} for PDF generation. The database side is split between \code{database.py}, which creates the SQLAlchemy engine and exposes the session factory, and \code{models.py}, which declares the \code{User} and \code{Scan} model classes.
+
+Authentication is implemented as a FastAPI dependency rather than as a global middleware. Every protected route declares a dependency on the function \code{get\_current\_user}, which extracts the JWT token from the \code{Authorization} header, verifies it, and returns the corresponding user object. If verification fails, the dependency raises an HTTP 401 error before the endpoint logic runs. The implementation is shown below:
+
+\begin{verbatim}
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(401, "Invalid token")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(401, "User not found")
+    return user
+\end{verbatim}
+
+This pattern centralizes the authentication logic in a single place. Adding a new protected endpoint is a matter of declaring the dependency in the route signature; nothing else needs to change.
+
+The central endpoint of the entire backend is \code{POST /api/v1/analyze}, which receives the uploaded file and runs the detection pipeline. Its signature shows how the dependency injection pattern composes:
+
+\begin{verbatim}
+@app.post("/api/v1/analyze")
+async def analyze_media(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    temp_path = save_temp_file(file)
+    result = run_detection_pipeline(temp_path)
+    scan = save_scan_to_db(result, current_user.id, db)
+    cleanup_temp_file(temp_path)
+    return scan
+\end{verbatim}
+
+The endpoint declares three dependencies: the uploaded file (validated automatically by FastAPI based on its type annotation), the current user (which simultaneously enforces authentication and provides the user object for the database link), and the database session (managed through a context-manager-style dependency that opens a transaction at the beginning of the request and closes it at the end).
+
+The rest of the backend follows the same pattern: each route is a thin function that delegates to the appropriate module and returns the result through Pydantic models that double as response schemas and as input for the automatically generated Swagger documentation.
 
 \section{Frontend Implementation}
-\lipsum[5]
+
+The frontend is a React single-page application bootstrapped through Vite. The directory layout follows a flat, conventional structure: \code{src/pages/} for the eight page components (Landing, Login, Register, Dashboard, Upload, Results, History, Share), \code{src/components/} for shared UI pieces (the ThemeToggle), \code{src/context/} for the React Context that holds the theme state, and \code{src/services/} for the API client. The application is wrapped in the \code{ThemeProvider} at the top level of \code{main.jsx}, which means every component can read or update the active theme without prop drilling.
+
+Routing is configured in \code{App.jsx} using \code{react-router-dom}. Public routes (Landing, Login, Register, Share) are declared directly. Protected routes (Dashboard, Upload, Results, History) are wrapped in a small \code{PrivateRoute} component that reads the JWT token from local storage and either renders the requested page or redirects to the login page if no valid token is present. The decision is purely client-side; the backend still verifies the token on every request, which means the client-side guard is a convenience, not a security boundary.
+
+All HTTP communication with the backend is centralized in \code{src/services/api.js}. This module exports a configured axios instance with the backend base URL pre-set, together with one function per API endpoint. An interceptor automatically attaches the JWT token from local storage to the \code{Authorization} header of every outgoing request, and a second interceptor catches HTTP 401 responses, clears the local storage, and redirects to the login page. This isolates the entire networking layer from the rest of the application and makes every page component oblivious to authentication details.
+
+The theme system is built around a single React Context (\code{ThemeContext}) that tracks the active mode (\code{light}, \code{dark}, or \code{system}). The active mode is persisted in local storage so that the user's choice survives page refreshes, and the system option reacts dynamically to the operating system's color scheme through the \code{prefers-color-scheme} media query. The Tailwind \code{@variant dark} directive then takes care of applying the right styles across the entire application.
+
+Each of the eight pages handles a single user task. The Landing page presents the platform and its main features. The Login and Register pages contain the corresponding forms. The Dashboard aggregates user statistics through charts powered by Recharts. The Upload page provides a drag-and-drop zone built with \code{react-dropzone} and triggers the analysis. The Results page displays the verdict, the risk meter, the frame statistics, and the action buttons (Download PDF, Share, New Scan). The History page lists every scan with filtering, search, and the Export CSV button that produces a downloadable file directly in the browser without any backend call. The Share page renders a public read-only view of a scan, accessed through the public share link.
 
 \section{Digital Forensics Module}
-\lipsum[6]
+
+The forensics module (\code{forensics.py}) runs in parallel with the AI detection pipeline whenever the input is an image. It extracts the EXIF metadata embedded in the file using the \code{exifread} library and analyses the fields to identify suspicious patterns. EXIF data is a standard set of tags that cameras and image editors write into image files, and it carries information useful for verifying authenticity: the make and model of the camera, the date and time of capture, the GPS coordinates if location services were enabled, and a software signature that indicates which program last wrote the file.
+
+The module reads the file in binary mode and passes it to \code{exifread.process\_file}, which returns a dictionary of tag-name to value pairs. From this dictionary, the module extracts a set of canonical fields: \code{Image Make}, \code{Image Model}, \code{EXIF DateTimeOriginal}, \code{Image Software}, and a few others. Each of these is stored in the \code{metadata\_json} column of the scan record for later display in the frontend.
+
+Beyond extraction, the module flags three categories of suspicious patterns. The first is the complete absence of camera information, which is unusual for a genuine photograph and common in AI-generated images. The second is the presence of editing software in the software field: signatures such as \code{Adobe Photoshop}, \code{GIMP}, or known AI generators tell the forensics module that the file was processed by something other than a camera. The third is an inconsistency between the file format and the metadata: a JPEG file with no Make field but with a high resolution and a generic timestamp is treated with suspicion.
+
+For videos, EXIF data is not consistently available, so the forensics module reports the file information that can be extracted (codec, duration, resolution) and skips the metadata-based heuristics. This behavior was verified by test 3.3 in the testing matrix of Chapter \ref{chap:testing}.
 
 \section{PDF Report Generation}
-\lipsum[7]
+
+The PDF report is generated server-side by the \code{report.py} module using ReportLab. When the user clicks the "Download PDF" button on the results page, the frontend sends a GET request to \code{/api/v1/report/\{scan\_id\}/pdf}; the backend retrieves the scan from the database, calls the report module to build the PDF in memory, and streams it back as a binary download with the correct \code{Content-Type} header.
+
+The report itself is structured as a multi-section document. The cover area carries the DeepGuard AI branding (logo and color band) and the unique scan identifier together with the analysis date. The user information section lists the username that requested the scan. The file information section gives the original filename, file type, and size. The verdict section is the most prominent: it shows the four-level categorical verdict in large type alongside the numeric risk score and the model confidence. The frame statistics section reports the number of fake, real, and total frames for video inputs, and is omitted for still images. The detection explanation block contains the human-readable text generated automatically from the scan data. The EXIF metadata block lists every field that was extracted from the file. The AI analysis details block closes the document with the model name, the model version, and the per-face predictions if multiple faces were detected.
+
+Figure \ref{fig:pdf-report} shows a sample of the generated PDF report.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][7cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of a sample PDF report generated by DeepGuard AI. The screenshot should show the header with the logo and color band, the scan ID and date, the user information, the file information, the verdict in large type with the risk score, the frame statistics, the detection explanation paragraph, and the EXIF metadata table.}}}
+\caption{Sample PDF forensic report generated by DeepGuard AI.}
+\label{fig:pdf-report}
+\end{figure}
+
+ReportLab gives full control over the layout, fonts, and colors of every element of the report. The choice of generating PDFs on the server rather than on the client guarantees that the output looks identical regardless of the user's browser, operating system, or installed fonts.
 
 \section{User Interface Screenshots}
-\lipsum[8]
+
+This section presents one screenshot for each of the eight pages of the platform. Each placeholder figure should be replaced with a real screenshot taken from the running application before the final compilation of the report.
+
+The Landing page (Figure \ref{fig:ui-landing}) is the first screen seen by any visitor. It introduces the platform, lists the main features in a clean grid, and offers entry points to login or to create a new account.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Landing page in dark mode. Should show the DeepGuard AI logo and project name, a short tagline, the feature grid with icons, and the Login and Register buttons in the top right.}}}
+\caption{Landing page of DeepGuard AI.}
+\label{fig:ui-landing}
+\end{figure}
+
+The Login page (Figure \ref{fig:ui-login}) presents the authentication form with a username field, a password field with a show/hide toggle, a submit button, and a link to the Register page.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Login page. Should show the username and password fields, the show/hide password toggle (eye icon), the Login button, and the "Don't have an account? Register" link below.}}}
+\caption{Login page.}
+\label{fig:ui-login}
+\end{figure}
+
+The Register page (Figure \ref{fig:ui-register}) extends the same visual style with an additional email field and clear feedback for validation errors.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Register page. Should show the username, email, and password fields, the show/hide password toggle, the Register button, and the link back to Login.}}}
+\caption{Register page.}
+\label{fig:ui-register}
+\end{figure}
+
+The Dashboard (Figure \ref{fig:ui-dashboard}) is the home screen seen after login. It aggregates the user's activity through four statistics cards (Total Scans, Fake Detected, Real Detected, Average Risk Score) and two charts (a pie chart for the verdict distribution and a line chart for the confidence trend over time).
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Dashboard page. Should show the top navbar with logo and username, the welcome banner, the four statistics cards in a row, the pie chart and line chart side by side, and the recent activity list below.}}}
+\caption{Dashboard page with statistics and charts.}
+\label{fig:ui-dashboard}
+\end{figure}
+
+The Upload page (Figure \ref{fig:ui-upload}) hosts the drag-and-drop zone for new analyses. Files can also be selected through a file picker, and a thumbnail preview appears as soon as the file is accepted.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Upload page. Should show the large drag-and-drop zone with the cloud-upload icon and instructions, an example of a file preview after a JPG has been selected, and the Analyze button below.}}}
+\caption{Upload page with drag-and-drop zone.}
+\label{fig:ui-upload}
+\end{figure}
+
+The Results page (Figure \ref{fig:ui-results}) is the most information-dense page of the platform. It shows the verdict, the risk meter, the confidence percentage, the per-frame statistics, the AI explanation text, the EXIF metadata, and the action buttons for downloading the PDF, sharing the result, or starting a new scan.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6.5cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Results page showing a HIGHLY FAKE verdict. Should show the file name and date, the large verdict label in red, the circular risk meter, the confidence percentage, the frame statistics block, the AI explanation paragraph, the EXIF metadata panel, and the three action buttons (Download PDF, Share, New Scan).}}}
+\caption{Results page with verdict, risk meter, and forensic details.}
+\label{fig:ui-results}
+\end{figure}
+
+The History page (Figure \ref{fig:ui-history}) lists every scan performed by the user. Each row carries the filename, the date, the verdict tag, the risk score, and a confidence percentage. Filter buttons let the user restrict the view to a specific verdict category. The Export CSV button next to the filters allows the entire history to be downloaded as a spreadsheet.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the History page. Should show the filter buttons (All, Fake, Real, Suspicious), the Export CSV button on the right, and the list of past scans in table form with columns for filename, date, verdict, risk score, and confidence.}}}
+\caption{History page with filter buttons and CSV export.}
+\label{fig:ui-history}
+\end{figure}
+
+The Share page (Figure \ref{fig:ui-share}) is the only authenticated-style page that is publicly accessible. It is opened through a unique URL of the form \code{/share/\{token\}} and presents a read-only view of the result so that anyone with the link can see the analysis without needing an account.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][6cm][c]{0.85\textwidth}{\centering\textit{[Placeholder] Screenshot of the Share page. Should show the same result layout as the Results page (verdict, risk meter, frame statistics, EXIF, explanation) but without the user-specific action buttons; instead a "Powered by DeepGuard AI" footer with a link to the landing page.}}}
+\caption{Public Share page accessed through the share token URL.}
+\label{fig:ui-share}
+\end{figure}
+
+Together these eight pages cover every feature described in Chapter \ref{chap:analysis}. The styling is consistent across them through the shared Tailwind classes and the active theme.
 
 \section{Conclusion}
-\lipsum[9]
+
+This chapter has shown how the design of Chapter \ref{chap:design} was implemented in practice. The development environment was described first, followed by a section-by-section walkthrough of the AI detection logic, the backend modules, the frontend pages, the forensics layer, and the PDF report generator. Each section focused on the most important structural decisions and showed a small number of code snippets where they help understand how the system works internally. The chapter ended with a tour of the user interface through nine placeholder screenshots of the platform.
+
+What remains is to verify that the system behaves as expected. The next chapter presents the testing campaign that was carried out to validate the platform, covering authentication, file upload, detection accuracy, forensics, user interface features, and security.

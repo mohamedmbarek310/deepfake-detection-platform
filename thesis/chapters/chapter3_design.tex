@@ -53,7 +53,7 @@ The second tier is the \textbf{business logic layer}. It runs on FastAPI through
 
 The third tier is the \textbf{data layer}. PostgreSQL holds two tables: \code{users} and \code{scans}. The \code{scans} table references the \code{users} table through a foreign key, which gives natural per-user data isolation. SQLAlchemy mediates every database access, so SQL strings never appear in the application code.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \fbox{\parbox[c][7cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Global architecture diagram showing the three tiers: React frontend on Vite (port 5173) at the top, FastAPI backend on Uvicorn (port 8000) in the middle, and PostgreSQL database (port 5432) at the bottom. Arrows indicate the direction of data flow: the user interacts with the frontend, which sends HTTP requests via axios to the backend, which talks to the database via SQLAlchemy ORM.}}}
 \caption{Three-tier architecture of DeepGuard AI.}
@@ -86,7 +86,7 @@ The \code{scans} table holds the result of every detection run. Each scan is tie
 
 Figure \ref{fig:erd} shows the entity-relationship diagram between the two tables. The relationship is one-to-many: a user has many scans, and a scan belongs to exactly one user.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \fbox{\parbox[c][6cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Entity-relationship diagram showing the two tables and their columns. The \code{users} table on the left with its columns (id, username, email, password, created\_at, is\_active). The \code{scans} table on the right with its columns. A 1..N relationship line between the two, with the foreign key user\_id labeled.}}}
 \caption{Entity-relationship diagram of the database schema.}
@@ -139,7 +139,7 @@ The AI detection pipeline is the technical heart of the project. It transforms a
 
 Figure \ref{fig:pipeline} shows the complete flow.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \fbox{\parbox[c][7.5cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Flow diagram of the AI detection pipeline. Boxes for each of the nine stages: 1. File reception, 2. Frame extraction, 3. Color space conversion (BGR to RGB), 4. Image normalization, 5. MTCNN face detection (224x224 crop), 6. ViT model inference, 7. Risk score aggregation, 8. EXIF forensic analysis (runs in parallel from stage 1), 9. Persistence and response. Arrows show the sequential flow with a side branch for stage 8.}}}
 \caption{The complete AI detection pipeline.}
@@ -188,7 +188,7 @@ Security in \deepguard{} is not concentrated in a single module: it is distribut
 
 The domain model of \deepguard{} is small enough that a single class diagram covers it cleanly. Figure \ref{fig:class} shows the two main entities (\code{User} and \code{Scan}) together with their attributes and the relationship between them.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \fbox{\parbox[c][6.5cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] UML class diagram with two boxes. Left box: User class with attributes (id, username, email, password, created\_at, is\_active) and methods (set\_password, check\_password). Right box: Scan class with all its attributes from the database schema. A 1..* association line between them, labeled "owns" on the user side and "belongs to" on the scan side.}}}
 \caption{UML class diagram of the domain model.}

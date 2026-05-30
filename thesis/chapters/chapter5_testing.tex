@@ -5,30 +5,200 @@
 \chapter{Testing and Validation}
 \label{chap:testing}
 
-\textit{This chapter describes the testing strategy adopted for the project, presents the validation results, and discusses the performance of the AI model and the overall system.}
+\textit{This chapter describes the testing strategy adopted for the project, presents the validation results, and discusses the performance of the AI model and of the overall system.}
 
-\vspace{1cm}
+\vspace{0.8cm}
 
 \section{Introduction}
-\lipsum[1]
+
+A working prototype is not enough on its own. Before the platform can be considered complete, every feature has to be exercised under realistic conditions, every error path has to be triggered deliberately, and the AI model has to be evaluated on inputs it was not necessarily trained on. This chapter presents the testing campaign that was carried out at the end of the development cycle to validate \deepguard{} against the requirements defined in Chapter \ref{chap:analysis}.
+
+The campaign was deliberately broad. It covered authentication and account management, file upload handling, AI detection accuracy, edge cases involving malformed or oversized inputs, the performance of the analysis pipeline, the security mechanisms protecting user data, and the responsiveness of the user interface. Every test was executed manually on the running platform, and the result of each test was recorded as either pass or fail. By the end of the campaign, all twenty-five test cases had passed, which validated the platform end to end.
 
 \section{Testing Strategy}
-\lipsum[2]
+
+The testing strategy for a project of this size and scope was kept intentionally pragmatic. The platform was developed by a single student over four months, and exhaustive automated unit testing would have consumed time that was better spent building features and writing this report. The strategy adopted instead was a structured manual testing campaign carried out against the live platform, with each scenario documented in a test matrix and verified visually.
+
+This approach has clear advantages for a project where the user interface and the AI behavior are tightly coupled. Manual testing exercises the same code paths that the jury and the end user will exercise during the demonstration. It also catches visual issues, animation glitches, and integration problems between the React frontend and the FastAPI backend that automated tests would miss without significant additional infrastructure.
+
+The campaign was organized into six categories, each addressing a different aspect of the platform: authentication and account management, file upload handling, AI detection accuracy, edge cases, performance, and security. For each test case, four pieces of information were recorded: an identifier, a description of the scenario, the expected outcome, and the observed result. The complete results are presented in the sections that follow.
 
 \section{Functional Testing}
-\lipsum[3]
+
+Functional testing verified that each user-facing feature of the platform behaves as expected under normal conditions. Three groups of tests were carried out under this category: authentication, user interface features, and forensic analysis. Eleven test cases in total fall under functional testing.
+
+The authentication tests cover the registration and login flow, including the error cases. The results are summarized in Table \ref{tab:test-auth}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{5.8cm}|p{5.8cm}|c|}
+\hline
+\textbf{ID} & \multicolumn{1}{c|}{\textbf{Test Scenario}} & \multicolumn{1}{c|}{\textbf{Expected Outcome}} & \textbf{Status} \\
+\hline
+1.1 & Existing user logs out and logs back in & Token is cleared on logout; login restores access and redirects to the Dashboard & \textbf{Pass} \\
+\hline
+1.2 & New user registers with a fresh username and email & Account is created in the database; user is redirected to the Login page & \textbf{Pass} \\
+\hline
+1.3 & User attempts to log in with a wrong password & Login is rejected and a clear error message is displayed & \textbf{Pass} \\
+\hline
+1.4 & Visitor attempts to register with an existing username or email & Registration is rejected with a duplicate-account error & \textbf{Pass} \\
+\hline
+\end{tabular}
+\caption{Authentication test results.}
+\label{tab:test-auth}
+\end{table}
+
+The user interface tests validated navigation, statistics, filtering, and the PDF download across the eight pages of the platform. The results are summarized in Table \ref{tab:test-ui}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{5.8cm}|p{5.8cm}|c|}
+\hline
+\textbf{ID} & \multicolumn{1}{c|}{\textbf{Test Scenario}} & \multicolumn{1}{c|}{\textbf{Expected Outcome}} & \textbf{Status} \\
+\hline
+4.1 & Dashboard reflects accurate statistics after multiple scans & Totals, verdict distribution, and confidence trend match the actual scan history & \textbf{Pass} \\
+\hline
+4.2 & History page filters and search work correctly & Filter buttons restrict the list to the selected verdict; search narrows by filename & \textbf{Pass} \\
+\hline
+4.3 & Results page renders correctly and PDF download succeeds & Verdict, risk meter, frame stats, and EXIF are visible; clicking Download PDF triggers a file download & \textbf{Pass} \\
+\hline
+4.4 & Navigation between all eight pages works as expected & Page transitions resolve without console errors; protected routes redirect to Login when no token is present & \textbf{Pass} \\
+\hline
+\end{tabular}
+\caption{User interface test results.}
+\label{tab:test-ui}
+\end{table}
+
+The forensic analysis tests covered the EXIF metadata extraction and the handling of files without metadata. The results are summarized in Table \ref{tab:test-forensics}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{5.8cm}|p{5.8cm}|c|}
+\hline
+\textbf{ID} & \multicolumn{1}{c|}{\textbf{Test Scenario}} & \multicolumn{1}{c|}{\textbf{Expected Outcome}} & \textbf{Status} \\
+\hline
+3.1 & Original camera photo with full EXIF metadata is uploaded & Metadata fields are extracted and displayed (Make, Model, capture date, software) & \textbf{Pass} \\
+\hline
+3.2 & AI-generated image with no metadata is uploaded & EXIF panel reports missing fields; AI detection classifies the image as fake & \textbf{Pass} \\
+\hline
+3.3 & Video file is uploaded & Forensics module reports the file information available but skips EXIF heuristics gracefully & \textbf{Pass} \\
+\hline
+\end{tabular}
+\caption{Forensic analysis test results.}
+\label{tab:test-forensics}
+\end{table}
+
+All eleven functional tests passed, which confirms that the platform's user-facing features behave as specified in Chapter \ref{chap:analysis}.
 
 \section{AI Model Evaluation}
-\lipsum[4]
+
+The dima806 ViT model is the engine of the platform, and its accuracy determines the credibility of the entire system. The model was evaluated in two distinct stages.
+
+First, during Phase 1 of the project, two reference images (one real, one synthetic) were passed through the model in isolation to confirm that it loaded correctly and produced sensible probabilities. The initial results were 99.83\% confidence for the real face and 99.38\% confidence for the fake face. These numbers were not the goal in themselves; their purpose was to validate the choice of model and confirm that the inference pipeline was wired correctly before any application code was built around it.
+
+Second, the model was evaluated within the full pipeline during the testing campaign. Four scenarios were defined to cover the main input types the platform is expected to handle in practice. The results are summarized in Table \ref{tab:test-ai}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.5cm}|p{5.5cm}|c|c|}
+\hline
+\textbf{Input Type} & \multicolumn{1}{c|}{\textbf{Description}} & \textbf{Verdict} & \textbf{Result} \\
+\hline
+Real face (still) & Original camera photograph of a clearly visible face & AUTHENTIC & \textbf{Correct} \\
+\hline
+Fake face (still) & AI-generated portrait from a known synthetic source & HIGHLY FAKE & \textbf{Correct} \\
+\hline
+Filtered real face & Real photograph passed through a social-media-style filter & AUTHENTIC & \textbf{Correct} \\
+\hline
+Video (short clip) & Short MP4 clip containing a synthetic face animated over several frames & HIGHLY FAKE & \textbf{Correct} \\
+\hline
+\end{tabular}
+\caption{AI detection accuracy on representative inputs.}
+\label{tab:test-ai}
+\end{table}
+
+The filtered real face case is particularly informative. Without the image normalization pipeline introduced in \code{normalizer.py}, photos with strong color casts or aggressive contrast adjustments often confused the model and produced suspicious or fake verdicts. After normalization, the same images returned the correct AUTHENTIC verdict, which validates the design decision made in Chapter \ref{chap:design}.
+
+The limitations of the model should also be acknowledged. The dima806 ViT was trained on faces, and its judgment is meaningful only when at least one face is detected by MTCNN. Images without faces are handled gracefully at the pipeline level (the platform returns a "no face detected" message rather than a forced verdict), but they are not evaluated for authenticity beyond their EXIF metadata. Extending the platform to detect full-body deepfakes, manipulated landscapes, or generated documents would require adding a second model alongside the current one. This direction is discussed as a perspective in the General Conclusion.
+
+A second limitation concerns the age of the training data. The dima806 model was trained on a dataset collected approximately three years before the time of writing. The field of generative AI has progressed rapidly in the meantime: newer diffusion-based generators produce synthetic faces with far fewer of the visual artifacts that the original model learned to recognize. This is a classic case of \textit{concept drift}, where the statistical properties of real-world inputs gradually diverge from the properties of the training distribution. The model's author has explicitly recommended retraining on a more recent labeled dataset to mitigate this drift, and doing so is identified as a future improvement in the General Conclusion.
 
 \section{Edge Case Testing}
-\lipsum[5]
+
+A robust platform must handle not only its intended use cases but also the malformed, unexpected, and adversarial inputs it will inevitably receive in production. Five edge cases were tested explicitly to validate the platform's behavior in these situations. The results are summarized in Table \ref{tab:test-edge}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{5.8cm}|p{5.8cm}|c|}
+\hline
+\textbf{ID} & \multicolumn{1}{c|}{\textbf{Test Scenario}} & \multicolumn{1}{c|}{\textbf{Expected Outcome}} & \textbf{Status} \\
+\hline
+2.4 & Upload of an image with no detectable face & Pipeline aborts with a "no face detected" message; no scan is saved & \textbf{Pass} \\
+\hline
+2.5 & Upload of a file with an unsupported extension & Backend rejects the file with an "invalid file type" error before processing & \textbf{Pass} \\
+\hline
+2.7 & Upload of an empty file (zero bytes) & Backend rejects the upload with a clear error message & \textbf{Pass} \\
+\hline
+2.8 & Upload of a text file renamed with a .jpg extension & Backend detects the format mismatch from the file's magic bytes and rejects it & \textbf{Pass} \\
+\hline
+2.9 & Upload of a file larger than the 100~MB limit & Backend rejects the upload with a "file too large" error before saving to disk & \textbf{Pass} \\
+\hline
+\end{tabular}
+\caption{Edge case test results.}
+\label{tab:test-edge}
+\end{table}
+
+These tests confirm that the platform fails gracefully in every case rather than crashing or producing misleading results. Test 2.8 is particularly important from a security standpoint: relying on the file extension alone to determine the type would allow attackers to upload arbitrary content disguised as images. The actual implementation reads the magic bytes of the file content, which closes this attack vector.
+
+The fact that all five edge case tests passed validates non-functional requirements NFR12 (graceful handling of unsupported formats) and NFR13 (automatic cleanup of temporary files) defined in Chapter \ref{chap:analysis}.
 
 \section{Performance Analysis}
-\lipsum[6]
+
+Non-functional requirements NFR1 and NFR2 of Chapter \ref{chap:analysis} specified concrete performance targets: analysis of a single image must complete in under five seconds, and analysis of a short video (under ten seconds in duration) must complete in under thirty seconds. These targets were verified during the testing campaign on the target hardware described in Chapter \ref{chap:implementation}.
+
+The model loading step is the most expensive single operation in the entire stack and takes around four seconds on first use. However, because the ViT model is loaded once at backend startup and kept in memory for the lifetime of the FastAPI process, this cost is paid once per backend session rather than once per request. Subsequent analyses do not pay it again.
+
+For a single image, the end-to-end analysis time (from upload completion to result rendering on the frontend) was measured at approximately two to three seconds on average, well inside the five-second target. The breakdown of this time is roughly: 200 milliseconds for the file upload and parsing, 500 milliseconds for the MTCNN face detection, 1.5 seconds for the ViT model inference, 300 milliseconds for the EXIF extraction and the explanation generation, and 200 milliseconds for the database persist and response.
+
+For a short video of approximately eight seconds at thirty frames per second (totaling roughly 240 frames), the analysis time was measured at approximately fifteen to twenty seconds. The dominant cost is the per-frame face detection and model inference applied to every tenth frame (twenty-four frames in this example). The result remains well inside the thirty-second target.
+
+The frontend responsiveness target of NFR3 was validated visually: during analysis, a progress message is displayed in the upload page, the application does not freeze, and the interface remains responsive to clicks on the theme toggle and the navigation menu. This holds because all the heavy work happens on the backend, leaving the React event loop unblocked.
 
 \section{Security Testing}
-\lipsum[7]
+
+Security testing focused on three concrete properties: that protected routes cannot be reached without a valid token, that one user's data cannot be accessed by another user, and that an expired token is handled gracefully on the client side. The results are summarized in Table \ref{tab:test-security}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{5.8cm}|p{5.8cm}|c|}
+\hline
+\textbf{ID} & \multicolumn{1}{c|}{\textbf{Test Scenario}} & \multicolumn{1}{c|}{\textbf{Expected Outcome}} & \textbf{Status} \\
+\hline
+5.1 & Visit a protected URL (Dashboard, Upload, Results) without logging in & Frontend redirects to Login; backend returns 401 if the URL is hit directly through the API & \textbf{Pass} \\
+\hline
+5.2 & Logged-in user A attempts to access a scan ID belonging to user B & Backend returns no scan (the query filters by \code{user\_id}, so the scan is invisible) & \textbf{Pass} \\
+\hline
+5.3 & User remains idle until the JWT token expires, then performs an action & Frontend detects the 401 response, clears local storage, and redirects to Login & \textbf{Pass} \\
+\hline
+\end{tabular}
+\caption{Security test results.}
+\label{tab:test-security}
+\end{table}
+
+Test 5.2 is the most important security test in the matrix because it verifies the data isolation guarantee promised in NFR7. The implementation relies on filtering every scan query by the \code{user\_id} field resolved from the JWT token, which means even a maliciously crafted scan id cannot expose data belonging to another user. This was verified by directly attempting to access scan IDs from a different user account through the API.
+
+Test 5.3 verifies the token expiry behavior. The JWT tokens issued by the platform are valid for twenty-four hours, after which they are rejected by the backend. The axios response interceptor in the frontend catches the resulting 401 response and triggers an automatic logout, which prevents the user from seeing confusing error messages and forces a fresh authentication.
 
 \section{Conclusion}
-\lipsum[8]
+
+This chapter has documented the testing campaign carried out at the end of the development cycle. The campaign covered all the major aspects of the platform: authentication, user interface features, forensic analysis, AI detection accuracy, edge cases, performance, and security. Twenty-five test cases were defined and executed manually on the running platform, and every one of them passed.
+
+The results confirm that \deepguard{} meets the functional and non-functional requirements set out in Chapter \ref{chap:analysis}. The AI model performs accurately on its target inputs (real faces, fake faces, filtered images, short videos), the platform handles malformed and adversarial inputs without crashing, the performance targets are met, and the security mechanisms protect user data effectively.
+
+With the testing campaign complete, the platform can be considered ready for its intended use. The next and final part of the report draws the overall conclusions of the project, reviews what was achieved against the original objectives, and outlines the directions in which the work could be extended in the future.
