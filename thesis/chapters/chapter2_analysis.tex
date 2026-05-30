@@ -5,30 +5,242 @@
 \chapter{Requirements and Analysis}
 \label{chap:analysis}
 
-\textit{This chapter follows the functional track of the 2TUP methodology. It identifies the actors, the functional and non-functional requirements, and presents the UML diagrams that describe the expected behavior of the system.}
+\textit{This chapter follows the functional track of the 2TUP methodology. It identifies the actors of the system, captures the functional and non-functional requirements, and presents the UML diagrams that describe the expected behavior of the platform.}
 
-\vspace{1cm}
+\vspace{0.8cm}
 
 \section{Introduction}
-\lipsum[1]
+
+The 2TUP methodology divides the analysis of a software project into two parallel tracks. This chapter follows the first of them: the functional track, which focuses entirely on what the system should do. It deliberately ignores implementation details, technology choices, and architectural decisions, all of which are addressed later in Chapter \ref{chap:design}. The goal here is to capture the expected behavior of the platform clearly enough that someone reading this chapter could describe what \deepguard{} does without ever seeing a line of code.
+
+The work begins by identifying the actors who interact with the system. From there, it moves through the functional and non-functional requirements, presents the global use case diagram, describes the most important use cases in tabular form, and ends with sequence diagrams that show how the main interactions unfold over time.
 
 \section{Identification of Actors}
-\lipsum[2]
+
+A use case analysis starts by asking a simple question: who uses the system, and what role do they play? For \deepguard{} the answer is straightforward. Two distinct actors interact with the platform, and the boundary between them is defined entirely by authentication state.
+
+The first actor is the \textbf{Visitor}. A visitor is any user who arrives at the platform without being logged in. Their interaction with the system is limited but meaningful: they can browse the landing page, read about how the platform works, consult the public Swagger documentation, and register a new account. A visitor cannot upload media, view results, or access any of the platform's protected features. Once they create an account and authenticate, they transition automatically into the second role.
+
+The second actor is the \textbf{Registered User}. This is the central actor of the platform and the source of nearly all the system's use cases. A registered user can upload images, videos, and GIFs for analysis; consult the detailed results of every scan including the verdict, the risk score, and the EXIF metadata; download a professional PDF report; export results in JSON format; generate a shareable link that allows external users to view a specific result; browse a personal history of all previous scans; and consult a statistics dashboard that summarizes their activity. Every action performed by a registered user is tied to their account through a JWT token, which means data isolation is guaranteed by design.
+
+A third actor could be considered: the system itself, in its role as a background processor that runs the AI model and the forensics analysis. In a strict UML sense this is a secondary actor that the registered user activates indirectly each time a file is uploaded. It is mentioned here for completeness but does not appear as an explicit actor in the use case diagram, where the focus stays on the human users.
 
 \section{Functional Requirements}
-\lipsum[3]
+
+The functional requirements of \deepguard{} describe the concrete behaviors that the system must offer. They are grouped here by feature area for readability, and they cover the full scope of the platform: from account management at one end to the generation of forensic reports at the other.
+
+\subsection*{Account management}
+\begin{description}
+\item[\textbf{FR1.}] The system shall allow a visitor to register by providing a username, an email address, and a password.
+\item[\textbf{FR2.}] The system shall authenticate registered users through a JWT-based login flow.
+\item[\textbf{FR3.}] The system shall reject access to protected endpoints when no valid token is presented.
+\item[\textbf{FR4.}] The system shall allow a user to log out, invalidating the token on the client side.
+\end{description}
+
+\subsection*{Media analysis}
+\begin{description}
+\item[\textbf{FR5.}] The system shall accept uploads of images (JPG, PNG), videos (MP4, AVI, MOV), and animated GIFs.
+\item[\textbf{FR6.}] The system shall extract frames from video files at regular time intervals.
+\item[\textbf{FR7.}] The system shall detect human faces in each frame using the MTCNN algorithm.
+\item[\textbf{FR8.}] The system shall classify each detected face using the dima806 Vision Transformer model.
+\item[\textbf{FR9.}] The system shall compute a global risk score between 0 and 100 based on the per-face predictions.
+\item[\textbf{FR10.}] The system shall translate the risk score into one of four categorical verdicts: AUTHENTIC, SUSPICIOUS, LIKELY FAKE, or HIGHLY FAKE.
+\item[\textbf{FR11.}] The system shall generate a Grad-CAM explainability heatmap highlighting the facial regions most influential in the model's decision.
+\item[\textbf{FR12.}] For video inputs, the system shall extract and present a gallery of the most suspicious frames identified during the analysis.
+\item[\textbf{FR13.}] For video inputs, the system shall produce a timeline visualization that marks the moments where suspicious content was detected.
+\end{description}
+
+\subsection*{Forensic analysis}
+\begin{description}
+\item[\textbf{FR14.}] The system shall extract EXIF metadata from uploaded images.
+\item[\textbf{FR15.}] The system shall flag signs of editing software in the metadata, such as Photoshop, GIMP, or known AI generation tools.
+\item[\textbf{FR16.}] The system shall analyze compression artifacts and report missing or suspicious camera information.
+\end{description}
+
+\subsection*{Reporting and sharing}
+\begin{description}
+\item[\textbf{FR17.}] The system shall generate a human-readable explanation of every result.
+\item[\textbf{FR18.}] The system shall produce a downloadable PDF forensic report for each scan.
+\item[\textbf{FR19.}] The system shall expose every result in JSON format for programmatic use.
+\item[\textbf{FR20.}] The system shall support CSV export of the user's scan history for use in spreadsheet applications and external analysis tools.
+\item[\textbf{FR21.}] The system shall generate a unique public link that allows external viewing of a specific scan result.
+\end{description}
+
+\subsection*{User dashboard}
+\begin{description}
+\item[\textbf{FR22.}] The system shall maintain a complete history of every scan performed by a user.
+\item[\textbf{FR23.}] The system shall display global statistics including total scans, distribution of verdicts, and confidence trends over time.
+\item[\textbf{FR24.}] The system shall support a light, dark, and system-default theme that persists across sessions.
+\end{description}
 
 \section{Non-Functional Requirements}
-\lipsum[4]
+
+Functional requirements describe what the system does. Non-functional requirements describe how well it does it. They are not less important; in many cases they decide whether the system is usable at all. The requirements listed below were identified during the early design phase and verified during the testing campaign reported in Chapter \ref{chap:testing}.
+
+\subsection*{Performance}
+\begin{description}
+\item[\textbf{NFR1.}] Analysis of a single image shall complete in under five seconds on the target hardware.
+\item[\textbf{NFR2.}] Analysis of a short video (under ten seconds) shall complete in under thirty seconds.
+\item[\textbf{NFR3.}] The frontend interface shall remain responsive during processing, with continuous progress feedback.
+\end{description}
+
+\subsection*{Security}
+\begin{description}
+\item[\textbf{NFR4.}] Passwords shall be stored using the bcrypt hashing algorithm with a per-user salt.
+\item[\textbf{NFR5.}] API endpoints handling private data shall require a valid JWT token.
+\item[\textbf{NFR6.}] JWT tokens shall expire after twenty-four hours and require re-authentication.
+\item[\textbf{NFR7.}] Each user's scan history shall be isolated and inaccessible to any other user.
+\end{description}
+
+\subsection*{Usability}
+\begin{description}
+\item[\textbf{NFR8.}] The interface shall be responsive on screens from 320 pixels wide upward.
+\item[\textbf{NFR9.}] File uploads shall support drag-and-drop in addition to the file picker.
+\item[\textbf{NFR10.}] The platform shall offer a fully functional dark mode.
+\item[\textbf{NFR11.}] All processing states (uploading, analyzing, complete, failed) shall be communicated visually to the user.
+\end{description}
+
+\subsection*{Reliability}
+\begin{description}
+\item[\textbf{NFR12.}] The system shall handle unsupported file formats with a clear, actionable error message.
+\item[\textbf{NFR13.}] Temporary uploaded files shall be deleted automatically after processing completes.
+\item[\textbf{NFR14.}] Database operations shall be wrapped in transactions to prevent partial writes on failure.
+\end{description}
+
+\subsection*{Maintainability}
+\begin{description}
+\item[\textbf{NFR15.}] The backend code shall be organized into single-responsibility modules.
+\item[\textbf{NFR16.}] The REST API shall be self-documented through Swagger and OpenAPI.
+\item[\textbf{NFR17.}] All persistent data shall be modeled through SQLAlchemy ORM classes for type safety.
+\end{description}
+
+\subsection*{Scalability}
+\begin{description}
+\item[\textbf{NFR18.}] The backend shall use FastAPI's asynchronous request handling to support concurrent users.
+\item[\textbf{NFR19.}] The PostgreSQL database shall support at least one hundred concurrent registered users without measurable performance degradation.
+\end{description}
 
 \section{Use Case Diagram}
-\lipsum[5]
+
+Once the actors and the requirements are identified, the natural next step in the functional track of 2TUP is the use case diagram. This diagram offers a single visual summary of what the system does and who triggers each action. It is the cornerstone of the functional analysis, because every use case it contains can be traced back to one or more functional requirements from the previous section.
+
+Figure \ref{fig:usecase} shows the global use case diagram of \deepguard{}. Both actors are placed on either side of the system boundary. The visitor is connected to a small set of use cases (consult landing page, register, view public Swagger documentation), while the registered user is connected to the much larger set of authenticated actions: login, upload media, view results, download report, share result, browse history, and view dashboard.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][7cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Global use case diagram showing two actors (Visitor and Registered User) and the use cases each can trigger. The diagram includes the inheritance link between Visitor and Registered User, and the include/extend relationships between use cases (for example, "Upload Media" includes "Generate Risk Score" and "View Results" is extended by "Generate PDF Report" and "Generate Share Link").}}}
+\caption{Global use case diagram of DeepGuard AI.}
+\label{fig:usecase}
+\end{figure}
+
+The diagram makes several relationships explicit. First, the use case "View Results" is reachable only after a successful "Upload Media", which itself depends on the user being logged in. Second, "Generate PDF Report" and "Generate Share Link" both extend "View Results": they are optional follow-up actions that the user may or may not take. Third, "Login" is a precondition shared by every authenticated use case, modeled by the inheritance link between the visitor and the registered user.
 
 \section{Detailed Use Cases}
-\lipsum[6]
+
+The use case diagram offers a high-level summary, but each use case becomes truly meaningful only when it is described in detail. This section presents the two most important use cases of the platform in full tabular form: \textbf{UC01 -- Register} and \textbf{UC02 -- Upload and Analyze Media}. The remaining use cases follow the same structure and are summarized briefly at the end of the section.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.5cm}|p{10cm}|}
+\hline
+\textbf{Identifier} & UC01 \\
+\hline
+\textbf{Name} & Register \\
+\hline
+\textbf{Actor} & Visitor \\
+\hline
+\textbf{Description} & Allows a new user to create an account on the platform. \\
+\hline
+\textbf{Preconditions} & The user is not authenticated and has access to the registration page. \\
+\hline
+\textbf{Main Flow} & 
+1. The visitor opens the registration page.\newline
+2. The visitor enters a username, an email address, and a password.\newline
+3. The visitor submits the form.\newline
+4. The system validates the input fields.\newline
+5. The system hashes the password using bcrypt.\newline
+6. The system creates a new entry in the users table.\newline
+7. The system returns a success message and redirects to the login page. \\
+\hline
+\textbf{Alternative Flow} & 
+4a. If a field is missing or malformed, the system displays a validation error and aborts the flow.\newline
+4b. If the username or email already exists, the system displays a duplicate-account error. \\
+\hline
+\textbf{Postconditions} & A new user account exists in the database. \\
+\hline
+\end{tabular}
+\caption{Detailed description of use case UC01 -- Register.}
+\label{tab:uc01}
+\end{table}
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.5cm}|p{10cm}|}
+\hline
+\textbf{Identifier} & UC02 \\
+\hline
+\textbf{Name} & Upload and Analyze Media \\
+\hline
+\textbf{Actor} & Registered User \\
+\hline
+\textbf{Description} & Allows an authenticated user to submit a file for deepfake detection and receive a complete analysis. \\
+\hline
+\textbf{Preconditions} & The user is logged in and holds a valid JWT token. \\
+\hline
+\textbf{Main Flow} & 
+1. The user navigates to the upload page.\newline
+2. The user drags or selects a file (image, video, or GIF).\newline
+3. The user confirms the upload.\newline
+4. The system stores the file temporarily and starts the detection pipeline.\newline
+5. The system extracts frames (for video) or processes the image directly.\newline
+6. The system detects faces with MTCNN and runs the ViT model on each face.\newline
+7. The system computes the global risk score and the categorical verdict.\newline
+8. The system extracts EXIF metadata and generates the explanation text.\newline
+9. The system persists the result in the database and links it to the user.\newline
+10. The system returns the full result to the frontend.\newline
+11. The user is redirected to the results page. \\
+\hline
+\textbf{Alternative Flow} & 
+4a. If the file format is unsupported, the system aborts the flow and displays a format error.\newline
+6a. If no face is detected, the system returns a "no face detected" verdict without running the model. \\
+\hline
+\textbf{Postconditions} & A new scan exists in the database. The user can consult the result, download the PDF, or generate a share link. \\
+\hline
+\end{tabular}
+\caption{Detailed description of use case UC02 -- Upload and Analyze Media.}
+\label{tab:uc02}
+\end{table}
+
+For brevity, the remaining use cases are summarized rather than described in full tabular form. \textbf{UC03 -- Login} authenticates an existing user and returns a JWT token. \textbf{UC04 -- View Results} displays a saved scan along with its verdict, heatmap, and metadata. \textbf{UC05 -- Generate PDF Report} produces a downloadable forensic report from a saved scan. \textbf{UC06 -- Generate Share Link} creates a public URL for a specific result. \textbf{UC07 -- View History} lists every scan the current user has performed. \textbf{UC08 -- View Dashboard} aggregates statistics across the user's scans.
 
 \section{Sequence Diagrams}
-\lipsum[7]
+
+Use case tables describe what happens, but they say little about the order of operations or the components involved. Sequence diagrams fill this gap by showing how the actors, the frontend, the backend, and the database exchange messages over time. Two sequence diagrams are presented here, corresponding to the two most important use cases of the platform: authentication and media analysis.
+
+The first sequence, shown in Figure \ref{fig:seq-auth}, covers the full authentication flow. The user submits their credentials from the frontend; the backend verifies them against the database; if valid, the backend signs a JWT token with the secret key and returns it. The frontend stores the token in local storage and attaches it to every subsequent request. Any protected endpoint then checks the token's signature and expiration before granting access.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][6cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Sequence diagram of the authentication flow. Lifelines: User, Frontend (React), Backend (FastAPI), Database (PostgreSQL). The diagram shows the login request, the password verification, the JWT generation, the token storage on the client side, and a subsequent protected request that includes the token in the Authorization header.}}}
+\caption{Authentication sequence diagram.}
+\label{fig:seq-auth}
+\end{figure}
+
+The second sequence, shown in Figure \ref{fig:seq-detect}, covers the detection pipeline. The user uploads a file from the frontend; the backend stores it temporarily and runs the preprocessing pipeline (frame extraction for videos, normalization for images); each detected face is passed to the ViT model; the predictions are aggregated into a global risk score; the EXIF analysis runs in parallel; the final result is persisted in the database; and the complete response is returned to the frontend, which navigates to the results page.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][6cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Sequence diagram of the detection pipeline. Lifelines: User, Frontend, Backend, AI Model, Forensics Module, Database. The diagram shows the upload request, the temporary storage, the frame extraction, the MTCNN face detection, the ViT classification, the risk aggregation, the EXIF extraction, the database persist, and the final response sent back to the frontend.}}}
+\caption{Detection pipeline sequence diagram.}
+\label{fig:seq-detect}
+\end{figure}
+
+These two sequences together cover the essential internal logic of the platform. Other interactions, such as PDF report generation, share link creation, and history retrieval, follow similar patterns and are described in Chapter \ref{chap:implementation} rather than here.
 
 \section{Conclusion}
-\lipsum[8]
+
+This chapter has captured the functional requirements of \deepguard{} in their complete form. Starting from the identification of the two actors, the analysis moved through the functional and non-functional requirements, the global use case diagram, the detailed description of the most important use cases, and finally the sequence diagrams that describe how the system behaves over time. Throughout this work, no implementation choices were made and no specific technologies were committed to. The functional track was kept deliberately separate from the technical one, as the 2TUP methodology recommends.
+
+The next chapter takes the opposite approach. It follows the technical track of 2TUP and the merge phase that brings the two tracks together: it justifies the technology stack chosen for each layer of the platform, describes the global architecture, presents the database schema and the REST API, and details the inner workings of the AI detection pipeline.

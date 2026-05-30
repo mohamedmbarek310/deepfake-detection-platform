@@ -5,33 +5,204 @@
 \chapter{Architecture and Technical Design}
 \label{chap:design}
 
-\textit{This chapter follows the technical track and the merge phase of the 2TUP methodology. It justifies the technology choices, describes the system architecture, the database schema, the AI pipeline, and the security mechanisms.}
+\textit{This chapter follows the technical track and the merge phase of the 2TUP methodology. It justifies the technology choices, describes the system architecture, the database schema, the AI detection pipeline, and the security mechanisms.}
 
-\vspace{1cm}
+\vspace{0.8cm}
 
 \section{Introduction}
-\lipsum[1]
+
+Chapter \ref{chap:analysis} captured what the system should do without committing to any particular way of doing it. This chapter goes in the opposite direction. It follows the technical track of the 2TUP methodology and then enters the merge phase, where the functional decisions of the previous chapter meet the technical decisions made here to form a single coherent design.
+
+The work begins with the technology stack, where every tool used in the project is presented alongside the alternatives that were considered and the reasoning behind the final choice. From there, the chapter describes the global three-tier architecture, the database schema, the REST API, the inner workings of the AI detection pipeline, and the security mechanisms that protect user data. It closes with a class diagram that captures the main domain objects of the system. The goal is not to describe code, which comes in Chapter \ref{chap:implementation}, but to explain the structural decisions that made the implementation possible.
 
 \section{Technology Stack}
-\lipsum[2]
+
+The technology stack of \deepguard{} was assembled deliberately, with each tool selected for a specific reason rather than for its popularity. This section explains every important choice. For each one, the alternatives that were considered are mentioned briefly, followed by the reasoning behind the final decision.
+
+\noindent\textbf{Programming language: Python.} Python was the natural choice for the backend because the AI side of the project depends entirely on the Python ecosystem. PyTorch, Hugging Face Transformers, OpenCV, NumPy, and the face detection library all run natively in Python, and integrating them from another language would have added a layer of complexity for no real gain. Python also offers FastAPI for the web layer and SQLAlchemy for the database, which means one language covers the entire backend cleanly.
+
+\noindent\textbf{Web framework: FastAPI.} Three candidates were considered: Flask, Django, and FastAPI. Flask is light but lacks native async support and requires manual configuration for things like API documentation. Django is more complete but is built around server-rendered pages and follows conventions that fit traditional CRUD applications rather than AI-driven REST APIs. FastAPI was chosen because it is built on the modern async stack (Starlette and Pydantic), generates Swagger and OpenAPI documentation automatically from the route signatures, validates request and response data through Python type hints, and is consistently ranked among the fastest Python web frameworks in benchmarks. For a project where the backend performs heavy AI work on each request, the combination of async handling, automatic documentation, and runtime validation made FastAPI the right fit.
+
+\noindent\textbf{AI model: Vision Transformer (ViT).} This was the most important architectural choice in the entire project. Two model families were available: convolutional neural networks (CNNs) and vision transformers (ViTs). CNNs have been the standard in computer vision since the early 2010s and remain excellent at capturing local patterns through their convolutional filters. Vision transformers, introduced more recently, work very differently. They split the image into small patches and apply self-attention across all patches simultaneously, which lets the model reason about relationships between distant regions of the same image. For deepfake detection this difference matters. A convincing deepfake usually contains subtle pixel-level inconsistencies that span multiple regions of the face: lighting that does not match between the cheek and the forehead, texture differences between the skin and the surrounding hair, color casts that are uniform across the synthetic region but absent elsewhere. CNNs can struggle with these global cues because their receptive fields are inherently local. ViTs, with their global attention mechanism, capture them more reliably. The specific model used in this project is \code{dima806/deepfake\_vs\_real\_image\_detection}, a publicly available ViT fine-tuned on real-versus-fake face data, which reached 99.83\% accuracy on real samples and 99.38\% on synthetic samples during the initial testing reported in Chapter \ref{chap:analysis}.
+
+\noindent\textbf{Face detection: MTCNN.} Before the ViT model can classify a face, the face has to be located in the image. Three options were considered: Haar Cascade classifiers (the OpenCV default for many years), HOG-based detectors (used in libraries like dlib), and MTCNN (Multi-task Cascaded Convolutional Networks). Haar Cascade is fast but generates many false positives and struggles with non-frontal faces. HOG detectors are more accurate but slower and still less reliable than modern neural detectors. MTCNN runs three small cascaded networks (proposal, refinement, output) and produces both bounding boxes and facial landmarks. It handles tilted faces, partial occlusions, and multiple faces in the same frame, all of which are common in the kind of media users upload for analysis. The \code{facenet-pytorch} implementation was selected because it is well maintained, integrates cleanly with PyTorch, and runs the same model on CPU when no GPU is available.
+
+\noindent\textbf{Database: PostgreSQL.} Two database engines were considered seriously: SQLite and PostgreSQL. SQLite is file-based and would have been sufficient for a single-user demo. The deciding factor was concurrency: SQLite does not handle concurrent writes well, and \deepguard{} is designed to support multiple registered users uploading and analyzing files at the same time. PostgreSQL is a full ACID-compliant relational database that scales to hundreds of concurrent connections without trouble, supports JSON columns natively (useful for the EXIF metadata field), and is the same engine used by most production web applications today. The local installation runs on the default port 5432 and is administered through pgAdmin during development.
+
+\noindent\textbf{ORM: SQLAlchemy 2.0.} Raw SQL would have worked, but using it directly leads to code that is hard to maintain and prone to subtle bugs. SQLAlchemy is the standard Python ORM, and version 2.0 introduced a much cleaner declarative syntax. It maps the \code{User} and \code{Scan} classes directly to the database tables, gives type safety, and protects against SQL injection by construction. The session-based pattern also makes transactions explicit, which matches the requirement NFR14 from Chapter \ref{chap:analysis}.
+
+\noindent\textbf{Frontend framework: React with Vite.} React was the chosen frontend framework after a brief comparison with Vue and Angular. Angular felt too heavy for a project of this scope and would have required learning TypeScript on top of everything else. Vue has a smaller ecosystem and fewer ready-made libraries for the specific UI patterns needed (charts, drag-and-drop upload, dark mode). React has the largest community, the widest selection of third-party components, and a stable hook-based programming model. The development server is provided by Vite rather than Create React App, because Vite uses native ES modules during development and is dramatically faster to start, reload, and build.
+
+\noindent\textbf{CSS framework: Tailwind CSS v4.} Tailwind is a utility-first CSS framework: instead of writing custom stylesheets, design is composed directly in the JSX through small atomic classes. The advantages for a solo project are significant. There is no custom CSS file to maintain, no specificity conflicts to debug, and dark mode is supported out of the box through the \code{@variant dark} mechanism in Tailwind v4. Bootstrap, the obvious alternative, was rejected for the opposite reasons: it forces a specific visual style that is hard to escape and would have made the platform look like every other Bootstrap-based site.
+
+\noindent\textbf{Authentication: JWT with python-jose.} Two approaches to authentication were considered: server-side sessions and JSON Web Tokens. Server-side sessions require a session store on the backend and do not scale naturally to multiple backend instances. JWT is stateless: the backend signs a token with a secret key at login time, the frontend stores the token in local storage and sends it in the \code{Authorization} header of every subsequent request, and the backend simply verifies the signature without consulting any state. This fits a REST API cleanly. The \code{python-jose} library was used for the actual token signing and verification.
+
+\noindent\textbf{Password hashing: bcrypt.} User passwords are hashed using bcrypt before being stored in the database. Bcrypt is computationally expensive on purpose, which makes brute-force attacks orders of magnitude harder than they would be against a fast hash like MD5 or even SHA-256. It also incorporates a per-user salt automatically, so two users with the same password end up with different hashes.
+
+\noindent\textbf{PDF generation: ReportLab.} The PDF reports are generated server-side using ReportLab, a Python library that gives full control over the layout, fonts, colors, and structure of the document. Generating PDFs in the frontend was considered briefly but rejected because the forensic report needs to look identical regardless of the user's browser, and because some of the data (the heatmap image, the EXIF dump) is more naturally produced on the server.
+
+\noindent\textbf{EXIF parsing: exifread.} A small but useful library, \code{exifread} reads EXIF metadata from JPEG and other common image formats without any heavyweight dependencies. It exposes the camera make, model, capture date, software signature, and a long list of other fields that the forensics module uses to flag suspicious patterns.
 
 \section{Global Architecture}
-\lipsum[3]
+
+\deepguard{} follows a classic three-tier architecture, with each tier living in its own process and communicating with the others through well-defined interfaces. The separation is strict: nothing in the frontend talks directly to the database, and nothing in the backend assumes any particular frontend client.
+
+The first tier is the \textbf{presentation layer}. It is implemented as a React single-page application served in development by the Vite dev server on port 5173. The application is split into eight pages (landing, login, register, dashboard, upload, results, history, share) and one persistent layout that hosts the navigation and the theme toggle. All state that needs to live across pages is held in a single React Context (the \code{ThemeContext} for the theme system) and in browser local storage for the JWT token.
+
+The second tier is the \textbf{business logic layer}. It runs on FastAPI through Uvicorn, also in development, on port 8000. This is where all the AI work happens: file reception, frame extraction, face detection, model inference, risk scoring, EXIF analysis, PDF generation, and database access. The backend is organized into single-responsibility modules (\code{auth}, \code{detector}, \code{preprocessor}, \code{normalizer}, \code{forensics}, \code{report}) that each expose a small public interface to the main FastAPI application.
+
+The third tier is the \textbf{data layer}. PostgreSQL holds two tables: \code{users} and \code{scans}. The \code{scans} table references the \code{users} table through a foreign key, which gives natural per-user data isolation. SQLAlchemy mediates every database access, so SQL strings never appear in the application code.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][7cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Global architecture diagram showing the three tiers: React frontend on Vite (port 5173) at the top, FastAPI backend on Uvicorn (port 8000) in the middle, and PostgreSQL database (port 5432) at the bottom. Arrows indicate the direction of data flow: the user interacts with the frontend, which sends HTTP requests via axios to the backend, which talks to the database via SQLAlchemy ORM.}}}
+\caption{Three-tier architecture of DeepGuard AI.}
+\label{fig:architecture}
+\end{figure}
+
+A request follows a predictable path. The user performs an action in the React UI, which calls a function in the \code{api.js} service module. The service builds an HTTP request, attaches the current JWT token in the \code{Authorization} header, and sends it to the FastAPI backend. The backend validates the token, runs the appropriate logic, persists any new data through SQLAlchemy, and returns a JSON response. The frontend stores or displays the result, and the cycle ends.
+
+This separation has several practical advantages. The frontend and backend can be developed and tested independently. The same API can be consumed by other clients later (a mobile app, a command-line tool, an external integration) without any backend changes. And the database schema can evolve without touching the UI, as long as the API contract stays stable.
 
 \section{Database Design}
-\lipsum[4]
+
+Two relational tables hold all the persistent data of the platform: \code{users} and \code{scans}. The schema was kept deliberately small. Every column that exists serves a clear purpose, and no column was added "in case it might be needed later."
+
+The \code{users} table stores the credentials and metadata of every registered account. Its primary key is a serial integer, which makes the table efficient to join. The username and email columns both carry a unique constraint, which means the application can rely on the database itself to reject duplicate accounts (used in the alternative flow of use case UC01). The password column holds the bcrypt hash, not the plain text. Two additional fields complete the table: \code{created\_at} for auditing purposes and \code{is\_active} to allow soft deactivation of accounts without removing the rows.
+
+The \code{scans} table holds the result of every detection run. Each scan is tied to a user through the \code{user\_id} foreign key. This single field is what enforces data isolation across the entire platform: any query that retrieves scans is filtered by the current user's id, and PostgreSQL refuses to delete a user whose scans still exist unless the foreign key is explicitly set to cascade. The remaining columns describe the file that was analyzed and the verdict that was produced. The most important of them are listed below:
+
+\begin{itemize}
+\item \code{verdict} stores the binary verdict (REAL or FAKE), kept separately for fast filtering.
+\item \code{risk\_score} is the integer score between 0 and 100 (FR9).
+\item \code{risk\_level} encodes the four categorical verdicts (AUTHENTIC, SUSPICIOUS, LIKELY\_FAKE, HIGHLY\_FAKE).
+\item \code{confidence} stores the floating-point confidence percentage returned by the model.
+\item \code{fake\_frames}, \code{real\_frames}, and \code{total\_frames} record the per-frame statistics for video inputs.
+\item \code{explanation} holds the auto-generated human-readable explanation (FR17).
+\item \code{heatmap\_path} stores the relative path to the Grad-CAM heatmap image saved on disk.
+\item \code{metadata\_json} contains the EXIF metadata dump as a JSON string, parsed back to a dictionary by the frontend when the result is displayed.
+\item \code{share\_token} is a randomly generated unique string used by the public sharing feature (FR21). It is unique across the table and nullable: a scan only receives a token when the user explicitly requests a share link.
+\end{itemize}
+
+Figure \ref{fig:erd} shows the entity-relationship diagram between the two tables. The relationship is one-to-many: a user has many scans, and a scan belongs to exactly one user.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][6cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Entity-relationship diagram showing the two tables and their columns. The \code{users} table on the left with its columns (id, username, email, password, created\_at, is\_active). The \code{scans} table on the right with its columns. A 1..N relationship line between the two, with the foreign key user\_id labeled.}}}
+\caption{Entity-relationship diagram of the database schema.}
+\label{fig:erd}
+\end{figure}
+
+Two design choices deserve a comment. First, the EXIF metadata is stored as a JSON string in a TEXT column rather than in a fully normalized set of columns. The reason is pragmatic: EXIF tags vary heavily from one camera to another, and trying to normalize them into a fixed schema would lead to either many sparse columns or many side tables. A JSON blob keeps the schema small and is decoded on the frontend, where the user interface displays only the fields it knows about. Second, the \code{share\_token} column carries a UNIQUE constraint but allows NULL. This allows the database to enforce token uniqueness automatically while still leaving the column empty for scans the user has not chosen to share.
 
 \section{API Design}
-\lipsum[5]
+
+The backend exposes its functionality through a REST API documented automatically by FastAPI under the \code{/docs} endpoint. The API is organized around resources rather than actions: a scan, a user, a token. Eleven endpoints in total cover the entire surface of the platform, grouped here into five categories.
+
+\subsection*{Authentication endpoints}
+\begin{itemize}
+\item \code{POST /api/v1/auth/register} --- accepts a username, email, and password, validates them, hashes the password with bcrypt, and creates a new user. No token required.
+\item \code{POST /api/v1/auth/login} --- accepts a username and password, verifies them, and returns a signed JWT token on success. No token required.
+\item \code{GET /api/v1/auth/me} --- returns the current user's profile information. Requires a valid token.
+\end{itemize}
+
+\subsection*{Analysis endpoint}
+\begin{itemize}
+\item \code{POST /api/v1/analyze} --- accepts a multipart upload (image, video, or GIF), runs the full detection pipeline described in Section 3.6, persists the result, and returns the complete scan as JSON. Requires a valid token.
+\end{itemize}
+
+\subsection*{History and dashboard endpoints}
+\begin{itemize}
+\item \code{GET /api/v1/history} --- returns the list of every scan performed by the current user, sorted by date. Requires a valid token.
+\item \code{GET /api/v1/stats} --- returns the aggregated statistics shown on the dashboard (total scans, distribution of verdicts, confidence trend). Requires a valid token.
+\end{itemize}
+
+\subsection*{Report endpoints}
+\begin{itemize}
+\item \code{GET /api/v1/report/\{scan\_id\}} --- returns the full JSON of a single scan. Requires a valid token and that the scan belongs to the current user.
+\item \code{GET /api/v1/report/\{scan\_id\}/pdf} --- returns the PDF report as a binary download. Same access rules as above.
+\end{itemize}
+
+\subsection*{Sharing endpoints}
+\begin{itemize}
+\item \code{POST /api/v1/scans/\{scan\_id\}/share} --- generates a unique share token for the specified scan, persists it, and returns the public URL. Requires a valid token.
+\item \code{GET /api/v1/share/\{token\}} --- returns the scan associated with the given share token. No token required, which is what makes the link shareable with people outside the platform.
+\end{itemize}
+
+Two utility endpoints close the surface: \code{GET /docs} (the Swagger UI generated by FastAPI from the route signatures and Pydantic models) and \code{GET /health} (a lightweight check used during testing).
+
+The request and response payloads are validated by Pydantic models on the backend, which means any malformed request is rejected with a clear error before it reaches the application logic. The same models are used to generate the OpenAPI schema and, through it, the Swagger documentation.
 
 \section{AI Detection Pipeline}
-\lipsum[6]
+
+The AI detection pipeline is the technical heart of the project. It transforms a raw uploaded file into a structured analysis: a verdict, a risk score, a heatmap, and a set of forensic indicators. The pipeline is the same whether the input is an image, an animated GIF, or a video; only the very first step differs.
+
+Figure \ref{fig:pipeline} shows the complete flow.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][7.5cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] Flow diagram of the AI detection pipeline. Boxes for each of the nine stages: 1. File reception, 2. Frame extraction, 3. Color space conversion (BGR to RGB), 4. Image normalization, 5. MTCNN face detection (224x224 crop), 6. ViT model inference, 7. Risk score aggregation, 8. EXIF forensic analysis (runs in parallel from stage 1), 9. Persistence and response. Arrows show the sequential flow with a side branch for stage 8.}}}
+\caption{The complete AI detection pipeline.}
+\label{fig:pipeline}
+\end{figure}
+
+The pipeline can be described in nine successive stages.
+
+\noindent\textbf{Stage 1 --- File reception.} The FastAPI endpoint \code{POST /api/v1/analyze} receives the multipart upload. The file is saved to a temporary directory (\code{backend/temp/}) with a unique name to avoid collisions between concurrent requests. The file type is determined from the actual content rather than from the user-provided extension, because the extension can be forged (this corresponds to test 2.8 in the test matrix of Chapter \ref{chap:testing}).
+
+\noindent\textbf{Stage 2 --- Frame extraction.} If the input is a video or a GIF, OpenCV reads the file frame by frame. The pipeline does not process every frame, which would be wasteful: it samples every tenth frame. This sampling rate was chosen as a balance between speed and accuracy. At thirty frames per second, every tenth frame still captures roughly three samples per second, which is enough to detect deepfake artifacts that typically persist across many consecutive frames. If the input is a still image, this stage is skipped and the single image is passed forward directly.
+
+\noindent\textbf{Stage 3 --- Color space conversion.} OpenCV loads frames in BGR order, but the Vision Transformer model expects RGB. The pipeline converts every frame from BGR to RGB before further processing. This single line of code is easy to forget and silently produces wrong results when it is forgotten, so it is centralized in the preprocessing module.
+
+\noindent\textbf{Stage 4 --- Image normalization.} Each frame is passed through the normalizer module (\code{normalizer.py}). This pipeline removes color casts left by photo filters, auto-corrects exposure, and reduces noise artifacts. The motivation is robustness: a real photograph that has been mildly filtered should still be classified as real, and not as fake just because the filter changed its pixel statistics. The normalization step was added during Phase 6 and verified by test 2.6 of the test matrix.
+
+\noindent\textbf{Stage 5 --- Face detection.} MTCNN is run on each normalized frame and returns a list of bounding boxes around the faces it detected. Each detected face is cropped from the frame and resized to 224 by 224 pixels, which is the input size expected by the Vision Transformer model. If no face is detected in any frame, the pipeline aborts gracefully with a "no face detected" verdict (handled in the alternative flow of use case UC02).
+
+\noindent\textbf{Stage 6 --- Model inference.} Each cropped face is passed through the dima806 ViT model. The model returns two probabilities per face: real and fake. The probabilities sum to one, and the higher of the two determines the per-face verdict.
+
+\noindent\textbf{Stage 7 --- Risk score aggregation.} The per-face predictions are aggregated into a single global risk score on a scale from 0 to 100. The aggregation is the mean of the fake probabilities across all faces, scaled up by one hundred and rounded. The risk score is then mapped to one of four categorical verdicts: AUTHENTIC (0--20), SUSPICIOUS (21--50), LIKELY FAKE (51--80), or HIGHLY FAKE (81--100). The thresholds were chosen empirically during testing.
+
+\noindent\textbf{Stage 8 --- Forensic analysis.} In parallel with the AI work, the forensics module (\code{forensics.py}) extracts EXIF metadata from the original file using exifread. It records the camera make and model, the capture date, and the software signature. It also flags missing or suspicious patterns: an image without any camera information, a software field that mentions a known image editor or AI generator, or a capture date that looks inconsistent with the file format.
+
+\noindent\textbf{Stage 9 --- Persistence and response.} The complete result (verdict, risk score, risk level, confidence, frame statistics, explanation, heatmap path, EXIF JSON) is saved to the scans table through SQLAlchemy and linked to the current user. A temporary cleanup task deletes the uploaded file from the temp folder. The backend returns the full result as JSON, and the frontend navigates the user to the results page.
+
+The pipeline is deterministic in its output but not in its timing: a single image typically completes in under five seconds, a short video in under thirty seconds, and longer videos scale roughly linearly with their length. These performance numbers correspond to NFR1 and NFR2 of Chapter \ref{chap:analysis} and are verified in Chapter \ref{chap:testing}.
 
 \section{Security Architecture}
-\lipsum[7]
+
+Security in \deepguard{} is not concentrated in a single module: it is distributed across the authentication system, the database schema, the API design, and the file handling logic. This section gathers the relevant mechanisms in one place.
+
+\noindent\textbf{Password storage.} User passwords are never stored as plain text. When a user registers, the password is run through bcrypt with a per-user salt before being inserted into the database. Bcrypt's cost factor makes the hashing process intentionally slow (around 250 milliseconds per hash on the target hardware), which is fast enough for legitimate use but slow enough to make brute-force attacks impractical against an offline copy of the database.
+
+\noindent\textbf{Token-based authentication.} Authentication is stateless and based on JSON Web Tokens. At login time, the backend signs a token with a server-side secret key (\code{SECRET\_KEY} in the \code{.env} file) using the HS256 algorithm. The token contains the user's id and an expiration timestamp set twenty-four hours into the future (\code{ACCESS\_TOKEN\_EXPIRE\_MINUTES=1440}). The frontend stores the token in local storage and attaches it to the \code{Authorization} header of every request through an axios interceptor.
+
+\noindent\textbf{Endpoint protection.} Every protected route declares a FastAPI dependency that extracts the token from the header, verifies its signature against the secret key, checks its expiration, and resolves the corresponding user object from the database. If any step fails, the dependency raises an HTTP 401 error before the endpoint logic runs. This pattern is centralized in \code{auth.py}, so adding a new protected endpoint is a matter of declaring the dependency rather than rewriting the verification logic.
+
+\noindent\textbf{Data isolation.} Multi-tenant isolation is enforced at the query level. Every scan-related query filters by \code{user\_id} using the value resolved from the JWT. This means even if a malicious user crafted a request for someone else's scan id, the query would return no rows because the user id would not match. This behavior was verified by test 5.2 of the test matrix.
+
+\noindent\textbf{File handling.} Three protections apply to uploaded files. The file type is determined from the magic bytes of the file content, not from the extension, which rejects forged uploads (a fake \code{.jpg} that is actually a text document, for example). The file size is capped at one hundred megabytes through a FastAPI configuration option. Temporary files are written to a dedicated \code{temp/} directory and deleted automatically after processing completes, which prevents the disk from filling up over time.
+
+\noindent\textbf{Token expiry.} When a token expires, the next protected request returns 401. The frontend interceptor catches this case, clears the local storage, and redirects the user to the login page. This behavior was verified by test 5.3 of the test matrix.
 
 \section{Class Diagram}
-\lipsum[8]
+
+The domain model of \deepguard{} is small enough that a single class diagram covers it cleanly. Figure \ref{fig:class} shows the two main entities (\code{User} and \code{Scan}) together with their attributes and the relationship between them.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox[c][6.5cm][c]{0.9\textwidth}{\centering\textit{[Placeholder] UML class diagram with two boxes. Left box: User class with attributes (id, username, email, password, created\_at, is\_active) and methods (set\_password, check\_password). Right box: Scan class with all its attributes from the database schema. A 1..* association line between them, labeled "owns" on the user side and "belongs to" on the scan side.}}}
+\caption{UML class diagram of the domain model.}
+\label{fig:class}
+\end{figure}
+
+The \code{User} class corresponds directly to the users table described in Section 3.4. Its attributes mirror the columns of the table, with two methods added at the application level: \code{set\_password}, which hashes a plain-text password through bcrypt before assignment, and \code{check\_password}, which verifies a candidate password against the stored hash.
+
+The \code{Scan} class mirrors the scans table. It has no methods of its own beyond what SQLAlchemy provides automatically; all the analysis logic lives in the dedicated modules (detector, preprocessor, forensics) rather than in the model class. This is a deliberate choice that keeps the model layer thin and the business logic testable in isolation.
+
+The relationship between the two classes is one-to-many: a User aggregates many Scan instances, and each Scan references exactly one User. SQLAlchemy expresses this through a back-reference, so the user object exposes a \code{scans} attribute that returns the list of their scans without any explicit query.
 
 \section{Conclusion}
-\lipsum[9]
+
+This chapter has presented the technical design of \deepguard{} in full. The technology stack was justified piece by piece, with every choice traced back to a concrete need. The three-tier architecture was described together with the path that a single request follows through the system. The database schema was presented and the two design decisions that shape it (JSON storage for EXIF, nullable unique share token) were explained. The API was documented endpoint by endpoint. The AI detection pipeline was broken down into its nine successive stages. The security mechanisms were gathered in a single section, and the domain model was summarized through a class diagram.
+
+With the functional analysis of Chapter \ref{chap:analysis} and the technical design of this chapter both complete, the merge phase of 2TUP is over. What remains is the implementation itself, which is the subject of Chapter \ref{chap:implementation}. That chapter shows how the design described here translates into actual code, illustrated with screenshots of the running platform.
